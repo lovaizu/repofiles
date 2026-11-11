@@ -31,6 +31,8 @@ pre-commit:
       skip: true
 ```
 
+The Claude Code hook checks its texts with each check that's on, or with only those that `args` of its job names, such as `claude-code: {jobs: [{name: claude-code, args: english}]}`.
+
 A `.vale.ini` or `.textlintrc` in the repository changes the rules of the check of its directory and below. The docs of [Vale](https://vale.sh/docs/vale-ini) and [textlint](https://textlint.org/docs/configuring) say how to write each file. The checks lay the settings of the file over their own, so write only what you change.
 
 ## What the checks check

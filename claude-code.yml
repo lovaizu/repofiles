@@ -2,7 +2,8 @@
 # this repository in remotes, with claude-code.yml in configs. The
 # .claude/settings.json that setup.sh puts runs it by
 # `lefthook run claude-code`, and claude.sh reads the input of Claude Code
-# on stdin.
+# on stdin. A repository names the jobs that check the texts in args of a
+# job of the same name in its lefthook-repo.yml, such as args: english.
 claude-code:
   jobs:
     - name: claude-code
