@@ -25,6 +25,8 @@ setup="$dir/repofiles/setup.sh"
 git init -q "$dir/repo"
 
 expect 2 "Usage: $setup <path>" "$setup"
+expect 1 "isn't the root of a Git repository" "$setup" "$dir/repo/typo"
+[ ! -e "$dir/repo/typo" ] || { echo "Failed: setup.sh should write nothing at a wrong path."; failed=1; }
 expect 1 "hasn't checked out a tag" "$setup" "$dir/repo"
 
 # Each file of files/ goes in, with the tag and its commit.

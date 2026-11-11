@@ -30,6 +30,13 @@ git init -q "$dir/repo"
 cd "$dir/repo" || exit 1
 "$dir/repofiles/setup.sh" . >/dev/null
 hook="$(jq -r '.hooks.PreToolUse[0].hooks[0].command' .claude/settings.json)"
+# Without lefthook install, and with no way to fetch the version, lefthook
+# can't run the job, and the hook stops the command with exit 2, which
+# Claude Code reads as a denial.
+out="$(jq -n --arg cwd "$PWD" '{cwd: $cwd, tool_name: "Bash", tool_input: {command: "gh pr create --title A --body B"}}' | env -u GIT_CONFIG_COUNT sh -c "$hook" 2>&1)"
+status=$?
+[ "$status" -eq 2 ] && [ "$out" = "The text of this command wasn't checked, as lefthook couldn't run the checks. Fix: install lefthook, and run lefthook install in this repository." ] ||
+  { echo "Failed: the hook should exit 2 with one line when lefthook can't run the job, but it exited $status with:"; echo "$out"; failed=1; }
 lefthook install >/dev/null
 
 expect "gh pr create --title 'Add it' --body 'Use a tool, e.g. Vale.'" "Vale on the body of gh pr create:"

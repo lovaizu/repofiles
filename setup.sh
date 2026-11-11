@@ -13,6 +13,10 @@ if [ "$#" -ne 1 ]; then
   exit 2
 fi
 target="$1"
+if ! root="$(cd "$target" 2>/dev/null && pwd -P)" || [ "$(git -C "$root" rev-parse --show-toplevel 2>/dev/null)" != "$root" ]; then
+  echo "setup.sh: $target isn't the root of a Git repository, so setup.sh put nothing. Fix: give the path of the directory that holds its .git." >&2
+  exit 1
+fi
 if ! version="$(git -C "$here" describe --tags --exact-match HEAD 2>/dev/null)"; then
   echo "setup.sh: $here hasn't checked out a tag, so setup.sh doesn't know which version to put. Fix: run git -C $here checkout <tag>." >&2
   exit 1
