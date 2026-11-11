@@ -93,7 +93,8 @@ cmp -s "$dir/lefthook-repo.yml" "$dir/repo/lefthook-repo.yml" && cmp -s "$dir/.v
 git init -q "$dir/old"
 printf 'remotes:\n  - git_url: https://github.com/lovaizu/checks\n    ref: v0.2.0\n' >"$dir/old/lefthook.yml"
 cp "$dir/old/lefthook.yml" "$dir/old.yml"
-expect 1 "holds files of its own where setup.sh puts the shared ones, so setup.sh put nothing: lefthook.yml." "$setup" "$dir/old"
+expect 1 "holds files of its own where setup.sh puts the shared ones, so setup.sh put nothing: lefthook.yml.
+its lefthook settings to lefthook-repo.yml" "$setup" "$dir/old"
 cmp -s "$dir/old.yml" "$dir/old/lefthook.yml" && [ ! -e "$dir/old/.github" ] ||
   { echo "Failed: setup.sh should change nothing in a repository with a lefthook.yml of its own."; failed=1; }
 

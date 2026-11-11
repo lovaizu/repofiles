@@ -26,15 +26,6 @@ Then commit the files, and run `lefthook install` once in each clone of the repo
 
 To update a repository to a newer version, check out its tag in the clone of this repository, and run `setup.sh` again. The next commit fetches the new version of the checks.
 
-### Move from lovaizu/checks
-
-A repository that names lovaizu/checks in its `lefthook.yml` holds its own settings there. Move them first:
-
-1. Move the jobs of `pre-commit` and any other setting of the repository from `lefthook.yml` to `lefthook-repo.yml`. Leave out `remotes`.
-1. For each language that `configs` doesn't name, turn its job off in `lefthook-repo.yml` with `skip: true`.
-1. Delete `lefthook.yml`, and the step `uses: lovaizu/checks@...` of the workflow that runs it.
-1. Run `setup.sh`.
-
 ## Check what Claude Code writes
 
 A Claude Code agent writes the title and body of each Issue and pull request, and each comment on them, with `gh`. These texts never go into a commit, so no commit hook checks them. Before Claude Code runs a `gh issue` or `gh pr` command, the hook checks its title, body and comment, and when a finding stops the text, the command doesn't run, and the agent gets the findings. The hook checks neither files, which the commit hook checks, nor commit messages, which the checks don't read.

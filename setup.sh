@@ -83,7 +83,7 @@ for name in "${names[@]}"; do
 done
 if [ "${#blocked[@]}" -gt 0 ]; then
   echo "setup.sh: $target holds files of its own where setup.sh puts the shared ones, so setup.sh put nothing: ${blocked[*]}." >&2
-  echo "  Fix: move the settings of the repository out of each file, as the README of lovaizu/repofiles says, delete the file, and run setup.sh again." >&2
+  echo "  Fix: move the settings of the repository out of each file, its lefthook settings to lefthook-repo.yml, which lefthook.yml extends, then delete the file, and run setup.sh again." >&2
   exit 1
 fi
 
