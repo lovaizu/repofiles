@@ -27,7 +27,17 @@ shift
 # The current directory with no link in it, the root of the repository,
 # where the search for settings ends.
 cd -P . || exit 1
-"$check" "$@"
+# The files that setup.sh puts, those of files/, hold no text of the
+# repository, and this repository keeps them working, so the checks leave
+# them out. A repository can hold no file of its own at those paths, but
+# .claude/settings.json, whose settings hold no prose either.
+mapfile -t shared < <(cd "$here/files" && find . -type f | sed 's|^\./||')
+given=()
+for file in "$@"; do
+  for name in "${shared[@]}"; do [ "$file" != "$name" ] || continue 2; done
+  given+=("$file")
+done
+"$check" ${given[@]+"${given[@]}"}
 
 if [ "${#notes[@]}" -gt 0 ]; then
   printf 'prose.sh: %s\n' "${notes[@]}" >&2

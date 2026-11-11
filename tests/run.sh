@@ -98,9 +98,9 @@ want "a textlint that fails" 1 "textlint didn't check pass-japanese.md: Node exi
 # A file of a format that textlint doesn't read fails, with the formats that
 # it reads.
 mkdir -p "$tmp/format"
-printf 'pre-commit: {}\n' >"$tmp/format/lefthook.yml"
-run_in "$tmp/format" japanese lefthook.yml
-want "a format that textlint doesn't read" 1 "textlint didn't check lefthook.yml: textlint reads only the files that end in .txt, .text, .md, " "Fix: leave each file out of the job japanese"
+printf 'pre-commit: {}\n' >"$tmp/format/config.yml"
+run_in "$tmp/format" japanese config.yml
+want "a format that textlint doesn't read" 1 "textlint didn't check config.yml: textlint reads only the files that end in .txt, .text, .md, " "Fix: leave each file out of the job japanese"
 
 # A file that isn't text in UTF-8 fails, as a tool would read it as other
 # text. A file with a NUL byte, such as an image, holds no text and passes,
@@ -109,6 +109,14 @@ mkdir -p "$tmp/encoding"
 printf 'A caf\xe9 sentence.\n' >"$tmp/encoding/latin1.md"
 run_in "$tmp/encoding" english latin1.md
 want "a file in Latin-1" 1 "The checks didn't check latin1.md: it isn't text in UTF-8"
+
+# The checks leave out the files that setup.sh puts, and check the same
+# text in a file of the repository's own.
+mkdir -p "$tmp/shared/.claude"
+printf '{\n  "name": "Use it",\n  "note": "A second line."\n}\n' | tee "$tmp/shared/.claude/settings.json" >"$tmp/shared/config.json"
+run_in "$tmp/shared" english .claude/settings.json config.json
+want "a file that setup.sh puts" 1 "Vale on config.json:"
+grep -qF "Vale on .claude/settings.json" <<<"$out" && { echo "Failed: the checks should leave out .claude/settings.json, but printed:"; echo "$out"; failed=1; }
 
 # Each sentence of the case of ja-no-unneeded-comma gets a finding of its
 # own, and a repository changes the rule in its settings, as any other rule.

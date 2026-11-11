@@ -8,6 +8,10 @@ extends:
 pre-commit:
   jobs:
     - name: english
-      glob: "*.md"
+      # The files that setup.sh puts hold prose in their comments, and the
+      # checks leave them out where they lie in another repository.
+      glob:
+        - "*.md"
+        - "files/*.yml"
       exclude:
         - "tests/cases/**"

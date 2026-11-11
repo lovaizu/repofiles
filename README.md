@@ -83,7 +83,7 @@ The report says what the checks are for before the findings, and again in short 
 
 Each language has a job of its own in `lefthook.yml`, as which languages a repository holds, and in which files, is the case of each repository. Neither job has a glob of its own, so a job checks each staged file unless you give it its files with `glob` and `exclude` in `lefthook-repo.yml`. The settings of the checks take precedence over those of `lefthook-repo.yml`, so `lefthook-repo.yml` can add a setting to a job, and can't change one that the checks set, such as its script.
 
-For a repository that holds only English, turn off the job `japanese` with `skip: true`. The job `english` checks each staged file, including the files that hold no prose, such as `LICENSE`, a lockfile and `.claude/settings.json`, and their findings stop the commit. Leave those files out with `exclude`. Which files to leave out is the case of your repository. For example:
+For a repository that holds only English, turn off the job `japanese` with `skip: true`. The job `english` checks each staged file, including the files that hold no prose, such as `LICENSE` and a lockfile, and their findings stop the commit. Leave those files out with `exclude`. Which files to leave out is the case of your repository. For example:
 
 ```yaml
 pre-commit:
@@ -92,7 +92,6 @@ pre-commit:
       exclude:
         - LICENSE
         - "*.lock"
-        - .claude/settings.json
     - name: japanese
       skip: true
 ```
@@ -124,7 +123,7 @@ pre-commit:
       glob: "docs/ja/**/*.md"
 ```
 
-With [`glob_matcher: doublestar`](https://lefthook.dev/configuration/glob_matcher/), `*.md` matches only the files in the root, and `docs/ja/**/*.md` matches the files in `docs/ja` and below. `ci.sh` fails when both jobs are off, as it would check nothing.
+With [`glob_matcher: doublestar`](https://lefthook.dev/configuration/glob_matcher/), `*.md` matches only the files in the root, and `docs/ja/**/*.md` matches the files in `docs/ja` and below. `ci.sh` fails when both jobs are off, as it would check nothing. The checks leave out the files that `setup.sh` puts, as they hold no text of the repository, so `lefthook-repo.yml` needs no line for them.
 
 ## Change a setting
 

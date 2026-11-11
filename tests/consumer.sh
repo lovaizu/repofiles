@@ -58,11 +58,12 @@ git add -A
 
 # With no lefthook-repo.yml, both jobs check each file, and textlint fails
 # on each file of a format that it doesn't read.
-expect 1 "" "english ❯" "japanese ❯" "Vale on README.md" "Vale on LICENSE" "textlint on docs/ja/guide.md" "textlint didn't check" "lefthook.yml" "with glob or exclude in lefthook-repo.yml"
+expect 1 "" "english ❯" "japanese ❯" "Vale on README.md" "Vale on LICENSE" "textlint on docs/ja/guide.md" "textlint didn't check" "mise.lock" "with glob or exclude in lefthook-repo.yml"
 # With the Japanese job off, only the English one runs, and Vale checks
 # each file, the shared files and the README with its Japanese key too.
 # The repository leaves out the files that hold no prose, as the README
-# says, and each other shared file passes.
+# says, and the checks leave out the files that setup.sh put, with no line
+# of the repository.
 cat >lefthook-repo.yml <<YAML
 pre-commit:
   jobs:
@@ -70,7 +71,6 @@ pre-commit:
       exclude:
         - LICENSE
         - "*.lock"
-        - .claude/settings.json
     - name: japanese
       skip: true
 YAML
@@ -110,6 +110,19 @@ printf '[*]\nGoogle.Latin = suggestion\n' >.vale.ini
 git add .vale.ini
 expect 0 left-out.txt
 [ -n "$(git log --oneline 2>/dev/null)" ] || { echo "Failed: a clean commit should go in."; failed=1; }
+# With the English job on each file, a commit of .claude/settings.json
+# that setup.sh put passes, with settings of the repository in it too, and
+# a JSON file of the repository's own gets its findings as before.
+printf 'pre-commit:\n  jobs:\n    - name: japanese\n      skip: true\n' >lefthook-repo.yml
+jq '.permissions.allow = ["Bash(make *)"]' .claude/settings.json >settings.json && mv settings.json .claude/settings.json
+git add lefthook-repo.yml .claude/settings.json
+run=(git commit -q -m "Allow make")
+expect 0 "Vale on "
+printf '{\n  "name": "Use it",\n  "note": "A second line."\n}\n' >config.json
+git add config.json
+run=(git commit -q -m "Add the config")
+expect 1 "" "Vale on config.json" "Google.Quotes (error)"
+git rm -q --cached config.json
 
 # With both languages off, no job of the checks runs, and ci.sh must fail.
 run=(bash "$here/ci.sh")
