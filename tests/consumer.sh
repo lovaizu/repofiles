@@ -60,7 +60,7 @@ expect 1 "" "english ❯" "japanese ❯" "Vale on README.md" "Vale on LICENSE" "
 # With the Japanese job off, only the English one runs, and Vale checks
 # each file, the shared files and the README with its Japanese key too.
 # The repository leaves out the files that hold no prose, as the README
-# says.
+# says, and each other shared file passes.
 cat >lefthook-repo.yml <<YAML
 pre-commit:
   jobs:
@@ -68,11 +68,12 @@ pre-commit:
       exclude:
         - LICENSE
         - "*.lock"
+        - .claude/settings.json
     - name: japanese
       skip: true
 YAML
 git add lefthook-repo.yml
-expect 1 "japanese ❯|Vale on (LICENSE|mise.lock|lefthook.yml|lefthook-repo.yml|.github/workflows/checks.yml)" "japanese (skip)" Google.Latin "Vale on README.md" "Vale on left-out.txt"
+expect 1 "japanese ❯|Vale on (LICENSE|mise.lock|lefthook.yml|lefthook-repo.yml|.github/workflows/checks.yml|.claude/settings.json)" "japanese (skip)" Google.Latin "Vale on README.md" "Vale on left-out.txt"
 
 # With both languages, the repository gives each job its files. With
 # doublestar, *.md matches the files in the root alone, and

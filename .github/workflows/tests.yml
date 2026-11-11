@@ -17,3 +17,4 @@ jobs:
       - run: tests/run.sh
       - run: tests/setup.sh
       - run: tests/consumer.sh
+      - run: tests/claude.sh

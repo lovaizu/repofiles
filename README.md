@@ -18,6 +18,7 @@ repofiles/setup.sh ~/work/lovaizu/telldes
 
 - `lefthook.yml`, which names this repository in `remotes`, at the tag, with `english.yml` and `japanese.yml` in `configs`. It extends `lefthook-repo.yml`, the lefthook settings of the repository.
 - `.github/workflows/checks.yml`, which runs the action of this repository, at the commit of the tag, on every file.
+- The hooks of `.claude/settings.json`, which check the text of an Issue or a pull request that Claude Code writes, as [Check what Claude Code writes](#check-what-claude-code-writes) says. `setup.sh` adds them to the settings of the repository, in place of those that it added before, and keeps the rest.
 
 Then commit the files, and run `lefthook install` once in each clone of the repository. The first run installs the tools of `mise.toml` with the sha256 of `mise.lock`, and textlint and its rules with the integrity of `textlint/package-lock.json`, into `~/.cache/lovaizu-repofiles`.
 
@@ -33,6 +34,12 @@ A repository that names lovaizu/checks in its `lefthook.yml` holds its own setti
 1. For each language that `configs` doesn't name, turn its job off in `lefthook-repo.yml` with `skip: true`.
 1. Delete `lefthook.yml`, and the step `uses: lovaizu/checks@...` of the workflow that runs it.
 1. Run `setup.sh`.
+
+## Check what Claude Code writes
+
+A Claude Code agent writes the title and body of each Issue and pull request, and each comment on them, with `gh`. These texts never go into a commit, so no commit hook checks them. Before Claude Code runs a `gh issue` or `gh pr` command, the hook checks its title, body and comment, and when a finding stops the text, the command doesn't run, and the agent gets the findings. The hook checks neither files, which the commit hook checks, nor commit messages, which the checks don't read.
+
+The hook runs `lefthook run claude-code`, so lefthook runs the hook of this repository at the tag of `lefthook.yml`, and fetches a new tag on its first run. The [`if` field](https://code.claude.com/docs/en/hooks) of each hook starts it only for a `gh issue` or `gh pr` command. A text has no path, so each job that `lefthook-repo.yml` doesn't turn off checks it, with the settings in the root of the repository. GitHub reads a title as plain text, and a body or a comment as Markdown, and the checks read each in that format. When the command makes a text as it runs, such as from a variable, the hook says that it didn't check it. A finding at a lower level reaches the agent and doesn't stop the command.
 
 ## Release a version
 
@@ -76,7 +83,7 @@ The report says what the checks are for before the findings, and again in short 
 
 Each language has a job of its own in `lefthook.yml`, as which languages a repository holds, and in which files, is the case of each repository. Neither job has a glob of its own, so a job checks each staged file unless you give it its files with `glob` and `exclude` in `lefthook-repo.yml`. The settings of the checks take precedence over those of `lefthook-repo.yml`, so `lefthook-repo.yml` can add a setting to a job, and can't change one that the checks set, such as its script.
 
-For a repository that holds only English, turn off the job `japanese` with `skip: true`. The job `english` checks each staged file, including the files that hold no prose, such as `LICENSE` and a lockfile, and their findings stop the commit. Leave those files out with `exclude`. Which files to leave out is the case of your repository. For example:
+For a repository that holds only English, turn off the job `japanese` with `skip: true`. The job `english` checks each staged file, including the files that hold no prose, such as `LICENSE`, a lockfile and `.claude/settings.json`, and their findings stop the commit. Leave those files out with `exclude`. Which files to leave out is the case of your repository. For example:
 
 ```yaml
 pre-commit:
@@ -85,6 +92,7 @@ pre-commit:
       exclude:
         - LICENSE
         - "*.lock"
+        - .claude/settings.json
     - name: japanese
       skip: true
 ```
@@ -171,4 +179,4 @@ A `.textlintrc.js` or `.textlintrc.cjs` fails the check, as JavaScript can't mer
 - A tool: change its version in `mise.toml`, then run `mise lock --platform linux-x64,linux-arm64,macos-arm64,macos-x64`.
 - textlint or a rule: change its version in `textlint/package.json`, then run `npm install --package-lock-only --ignore-scripts` in `textlint`.
 
-`tests/run.sh` checks that each case in `tests/cases/english` and `tests/cases/japanese` passes, shows, or fails as its name says, and checks each thing that the checks must do with one case. `tests/setup.sh` runs `setup.sh` on a new repository, on one with its own `lefthook.yml`, and again at the same tag and at a newer one. `tests/consumer.sh` runs `ci.sh` and a commit in a repository that `setup.sh` sets up, with one language and with both, with its own globs, `.vale.ini` and `.textlintrc`.
+`tests/run.sh` checks that each case in `tests/cases/english` and `tests/cases/japanese` passes, shows, or fails as its name says, and checks each thing that the checks must do with one case. `tests/setup.sh` runs `setup.sh` on a new repository, on one with its own `lefthook.yml`, and again at the same tag and at a newer one. `tests/consumer.sh` runs `ci.sh` and a commit in a repository that `setup.sh` sets up, with one language and with both, with its own globs, `.vale.ini` and `.textlintrc`. `tests/claude.sh` runs the hook by the command of `.claude/settings.json` in a repository that `setup.sh` sets up. `tests/run.sh` also checks the texts that `lib/command-texts.jq` finds in commands.

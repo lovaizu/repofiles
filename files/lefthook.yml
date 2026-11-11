@@ -11,3 +11,4 @@ remotes:
     configs:
       - english.yml
       - japanese.yml
+      - claude-code.yml

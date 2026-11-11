@@ -59,7 +59,10 @@ git -C "$dir/repofiles" tag v9.9.9
 # A repository with none of the shared files gets each of them, at the tag
 # and its commit.
 expect 0 "put lefthook.yml of v9.9.9
-put .github/workflows/checks.yml of v9.9.9" "$setup" "$dir/repo"
+put .github/workflows/checks.yml of v9.9.9
+put .claude/settings.json of v9.9.9" "$setup" "$dir/repo"
+[ "$(jq -c '[.hooks.PreToolUse[] | .matcher, (.hooks[] | .if, (.command | contains("lefthook run claude-code")))]' "$dir/repo/.claude/settings.json")" = '["Bash","Bash(gh issue *)",true,"Bash(gh pr *)",true]' ] ||
+  { echo "Failed: .claude/settings.json should run lefthook run claude-code before each gh issue and gh pr command, but it holds:"; cat "$dir/repo/.claude/settings.json"; failed=1; }
 holds "$dir/repo/lefthook.yml" "ref: v9.9.9" "git_url: https://github.com/lovaizu/repofiles" "- lefthook-repo.yml"
 holds "$dir/repo/.github/workflows/checks.yml" "uses: lovaizu/repofiles@$commit # v9.9.9"
 grep -q '{{' "$dir/repo/lefthook.yml" "$dir/repo/.github/workflows/checks.yml" &&
@@ -91,6 +94,31 @@ cp "$dir/old/lefthook.yml" "$dir/old.yml"
 expect 1 "holds files of its own where setup.sh puts the shared ones, so setup.sh put nothing: lefthook.yml." "$setup" "$dir/old"
 cmp -s "$dir/old.yml" "$dir/old/lefthook.yml" && [ ! -e "$dir/old/.github" ] ||
   { echo "Failed: setup.sh should change nothing in a repository with a lefthook.yml of its own."; failed=1; }
+
+# setup.sh adds its hooks to .claude/settings.json of the repository's own,
+# in place of those that it put before, and keeps the rest. Settings that
+# already hold the hooks stay as they are, with their format.
+git init -q "$dir/own"
+mkdir "$dir/own/.claude"
+cat >"$dir/own/.claude/settings.json" <<'JSON'
+{"permissions": {"allow": ["Bash(make *)"]},
+ "hooks": {"PreToolUse": [
+   {"matcher": "Bash", "hooks": [{"type": "command", "command": "lefthook run claude-code --old"}, {"type": "command", "command": "own.sh"}]},
+   {"matcher": "Write", "hooks": [{"type": "command", "command": "lefthook run claude-code --old"}]}],
+  "Stop": [{"hooks": [{"type": "command", "command": "stop.sh"}]}]}}
+JSON
+expect 0 "put .claude/settings.json of v9.9.10" "$setup" "$dir/own"
+got="$(jq -c '[.permissions.allow[], (.hooks.PreToolUse[] | .matcher, (.hooks[] | .if // .command)), .hooks.Stop[0].hooks[0].command]' "$dir/own/.claude/settings.json")"
+[ "$got" = '["Bash(make *)","Bash","own.sh","Bash","Bash(gh issue *)","Bash(gh pr *)","stop.sh"]' ] ||
+  { echo "Failed: setup.sh should keep the settings of the repository and put its hooks in place of the old ones, but it gave: $got"; failed=1; }
+printf '{"hooks": {"PreToolUse": %s}}\n' "$(jq -c .hooks.PreToolUse "$dir/repo/.claude/settings.json")" >"$dir/own/.claude/settings.json"
+before="$(state "$dir/own")"
+expect 0 "" "$setup" "$dir/own"
+[ "$(state "$dir/own")" = "$before" ] || { echo "Failed: setup.sh should leave settings that hold its hooks as they are."; failed=1; }
+printf '{"hooks": \n' >"$dir/own/.claude/settings.json"
+rm "$dir/own/lefthook.yml"
+expect 1 ".claude/settings.json isn't a JSON object" "$setup" "$dir/own"
+[ ! -e "$dir/own/lefthook.yml" ] || { echo "Failed: setup.sh should put nothing when it can't read .claude/settings.json."; failed=1; }
 
 [ "$failed" -eq 0 ] && echo "The cases of setup.sh passed."
 exit "$failed"
