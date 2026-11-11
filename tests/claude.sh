@@ -54,6 +54,18 @@ expect 'gh issue comment 1 --body "$text"' "The hook can't read the body of gh i
 expect "gh issue comment 1 --body-file missing.md" "missing.md isn't there before the command runs"
 [ -z "$(find . -maxdepth 1 -name '.claude-code.*')" ] || { echo "Failed: the hook should delete the copies of the texts."; failed=1; }
 
+# A repository names the jobs that check the texts, and the hook runs only
+# those: textlint would stop the length of the English sentence, and the
+# Japanese one.
+printf 'claude-code:\n  jobs:\n    - name: claude-code\n      args: english\n' >lefthook-repo.yml
+expect "gh pr create --title 'Add it' --body \"\$(cat <<'EOF'
+This body runs well past the length that a Japanese sentence may have, as an English sentence often does, and only Vale checks it.
+
+この設定はすべてのファイルに効きます。この設定はルートに置くものである。
+EOF
+)\""
+rm lefthook-repo.yml
+
 # A newer tag that setup.sh puts changes the version that the hook runs.
 # lefthook fetches it first, and the hook still prints only its JSON.
 git -C "$dir/repofiles" commit -q --allow-empty -m "A newer version"
