@@ -95,12 +95,21 @@ want "a Vale that fails" 1 "Vale didn't check pass-english.md: Vale exited " "$f
 run_in "$tmp/broken" japanese pass-japanese.md
 want "a textlint that fails" 1 "textlint didn't check pass-japanese.md: Node exited 1. " "$fix" "JSON5: invalid end of input"
 
-# A file of a format that textlint doesn't read fails, with the formats that
-# it reads.
+# Each check leaves out a file whose prose its tool can't read apart from
+# its code, and reads the comments of YAML and TOML.
 mkdir -p "$tmp/format"
-printf 'pre-commit: {}\n' >"$tmp/format/config.yml"
+printf '{"note": "Use e.g. this."}\n' >"$tmp/format/config.json"
+printf 'echo "Use e.g. this".\n' >"$tmp/format/run.sh"
+printf 'Use e.g. this.\n' >"$tmp/format/NOTES"
+printf '# Use e.g. this.\nrun: echo "$x".\n' >"$tmp/format/config.yml"
+printf '# Use e.g. this.\nkey = "a.b"\n' >"$tmp/format/config.toml"
+run_in "$tmp/format" english config.json run.sh NOTES config.yml config.toml
+want "formats that Vale reads" 1 "Vale on config.yml:" "Vale on config.toml:"
+finding Vale config.yml "Line 1, Google.Latin (error)"
+finding Vale config.toml "Line 1, Google.Latin (error)"
+grep -qE "Vale on (config.json|run.sh|NOTES)|Google.Quotes" <<<"$out" && { echo "Failed: the English check should leave out the code, but printed:"; echo "$out"; failed=1; }
 run_in "$tmp/format" japanese config.yml
-want "a format that textlint doesn't read" 1 "textlint didn't check config.yml: textlint reads only the files that end in .txt, .text, .md, " "Fix: leave each file out of the job japanese"
+[ "$status" -eq 0 ] && [ -z "$out" ] || { echo "Failed: the Japanese check should leave out config.yml, but it exited $status with:"; echo "$out"; failed=1; }
 
 # A file that isn't text in UTF-8 fails, as a tool would read it as other
 # text. A file with a NUL byte, such as an image, holds no text and passes,
@@ -112,11 +121,11 @@ want "a file in Latin-1" 1 "The checks didn't check latin1.md: it isn't text in 
 
 # The checks leave out the files that setup.sh puts, and check the same
 # text in a file of the repository's own.
-mkdir -p "$tmp/shared/.claude"
-printf '{\n  "name": "Use it",\n  "note": "A second line."\n}\n' | tee "$tmp/shared/.claude/settings.json" >"$tmp/shared/config.json"
-run_in "$tmp/shared" english .claude/settings.json config.json
-want "a file that setup.sh puts" 1 "Vale on config.json:"
-grep -qF "Vale on .claude/settings.json" <<<"$out" && { echo "Failed: the checks should leave out .claude/settings.json, but printed:"; echo "$out"; failed=1; }
+mkdir -p "$tmp/shared"
+printf '# Use e.g. this.\n' | tee "$tmp/shared/lefthook.yml" >"$tmp/shared/config.yml"
+run_in "$tmp/shared" english lefthook.yml config.yml
+want "a file that setup.sh puts" 1 "Vale on config.yml:"
+grep -qF "Vale on lefthook.yml" <<<"$out" && { echo "Failed: the checks should leave out lefthook.yml, but printed:"; echo "$out"; failed=1; }
 
 # Each sentence of the case of ja-no-unneeded-comma gets a finding of its
 # own, and a repository changes the rule in its settings, as any other rule.

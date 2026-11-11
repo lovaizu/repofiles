@@ -1,0 +1,5 @@
+# Gives Vale the comments of a YAML file, its prose.
+engine: tree-sitter
+scopes:
+  - expr: (comment)+ @comment
+    name: yaml

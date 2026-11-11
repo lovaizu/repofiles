@@ -11,7 +11,11 @@ input="$(cat)"
 "$here/install.sh" >&2 || exit 1
 eval "$(MISE_LOCKED=1 MISE_TRUSTED_CONFIG_PATHS="$here/mise.toml" mise -C "$here" env -s bash)"
 
-texts="$(jq -r '.tool_input.command // empty' <<<"$input" | shfmt --to-json 2>/dev/null | jq -c -f "$here/lib/command-texts.jq")" || exit 0
+# A command that shfmt can't read holds texts that the hook can't find.
+if ! texts="$(jq -r '.tool_input.command // empty' <<<"$input" | shfmt --to-json 2>/dev/null | jq -c -f "$here/lib/command-texts.jq")"; then
+  jq -n '{hookSpecificOutput: {hookEventName: "PreToolUse", permissionDecision: "deny", permissionDecisionReason: "The command didn'"'"'t run: the hook couldn'"'"'t read it as Bash, so it couldn'"'"'t check the texts that it would keep on GitHub. Write it as plain Bash, with each text in the command or in a file that exists before it runs."}}'
+  exit 0
+fi
 # The jobs that check the texts: those that the repository names in args of
 # the job claude-code in its lefthook-repo.yml, as only it knows the
 # languages of its Issues and pull requests, or else each job that is on.
@@ -37,7 +41,7 @@ while IFS= read -r item; do
     [ "${file#/}" != "$file" ] || file="$cwd/$file"
     cp "$file" "$path" 2>/dev/null || { reason+="The hook can't read $what, as $file isn't there before the command runs. Write the text in the command, or in a file that exists before it runs."$'\n\n'; continue; }
   elif ! jq -je '.text // error' <<<"$item" >"$path" 2>/dev/null; then
-    reason+="The hook can't read $what, as the command makes it when it runs, such as from a variable. Write the text in the command, or in a file that exists before it runs."$'\n\n'
+    reason+="The hook can't read $what, as the command makes it when it runs, such as from a variable, the commits of --fill, or a template. Write the text in the command, or in a file that exists before it runs."$'\n\n'
     continue
   fi
   files+=("$path")

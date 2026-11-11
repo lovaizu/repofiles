@@ -1,6 +1,6 @@
 # setup.sh of lovaizu/repofiles puts this file. To change it, run that
 # setup.sh again, as the README of lovaizu/repofiles says.
-name: Checks
+name: Lint
 
 on: push
 
@@ -12,7 +12,7 @@ jobs:
   # The checks of lefthook.yml on every file, as they run before each
   # commit. They catch a change from a clone without the hooks, or from
   # GitHub itself.
-  checks:
+  lint:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

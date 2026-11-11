@@ -87,14 +87,23 @@ vale_config() {
   echo "$work/vale-empty.ini"
 }
 
-# Runs Vale on each file given, one at a time, with its settings, by
-# --config: without it, Vale would read VALE_CONFIG_PATH or the .vale.ini
-# of the home directory in place of the settings of the repository. Vale
-# runs in the directory of its settings, where it reads a relative path of
-# them from, and reads each file in the format that its extension names.
+# The files whose prose Vale reads apart from their code, by the extension:
+# the markup, code and plain text of FormatByExtension in
+# internal/core/format.go of Vale, and YAML and TOML, whose comments the
+# Views of vale/.vale.ini read. Vale reads any other file, such as JSON, a
+# shell script, or a file with no extension, as one block of text, its code
+# too, so the English check leaves it out.
+vale_reads='\.(md|mdown|markdown|markdn|[Rr]md|mdx|myst|qmd|adoc|asciidoc|asc|rst|rest|typ|html|htm|shtml|xhtml|xml|xsd|dita|org|qdoc|qdocinc|ipynb|txt|py|py3|pyw|rpy|cpy|clj|cljs|cljc|cljd|cpp|cc|c|cp|cxx|c\+\+|h|hpp|h\+\+|css|cs|csx|ex|exs|go|hs|java|bsh|jl|kt|kts|js|jsx|mjs|cjs|lua|php|pl|pm|pod|proto|ps1|psm1|psd1|qml|rb|gemspec|rs|r|R|sass|scss|less|scala|sbt|swift|ts|tsx|mts|cts|yml|yaml|toml)$'
+
+# Runs Vale on each file given that it reads, one at a time, with its
+# settings, by --config: without it, Vale would read VALE_CONFIG_PATH or
+# the .vale.ini of the home directory in place of the settings of the
+# repository. Vale runs in the directory of its settings, where it reads a
+# relative path of them from.
 check_english() {
   local file config status
   for file in "$@"; do
+    [[ "$file" =~ $vale_reads ]] || continue
     is_text "$file" || continue
     config="$(vale_config "$file")"
     (path="$PWD/$file" && cd "${config%/*}" && XDG_CONFIG_HOME="$work/vale-home" vale --config="$config" --no-exit --output=JSON "$path") >"$work/out" 2>"$work/err"
@@ -109,20 +118,16 @@ check_english() {
 
 # Runs textlint once on all the files given, by textlint/check.mjs, which
 # says how it checks each file and writes its report to
-# $work/textlint.json. Each file of a format that textlint doesn't read
-# fails, with the formats that it reads.
+# $work/textlint.json.
 check_japanese() {
-  local file texts=() status formats
+  local file texts=() status
   for file in "$@"; do is_text "$file" && texts+=("$file"); done
   [ "${#texts[@]}" -gt 0 ] || return 0
   node "$root/textlint/check.mjs" "$textlint_dir/node_modules" "$work" "${texts[@]}" >"$work/out" 2>"$work/err"
   status=$?
   if [ "$status" -ne 0 ]; then
     fail_run textlint "Node exited $status" "${texts[@]}"
-  elif ! add_findings textlint "$(cat "$work/textlint.json")" || ! formats="$(jq -r '.notes | group_by(.reason)[]
-    | "textlint didn'"'"'t check \(map(.file) | join(", ")): \(.[0].reason). Fix: leave each file out of the job japanese, with glob or exclude in lefthook-repo.yml."' "$work/textlint.json" 2>"$work/err")"; then
+  elif ! add_findings textlint "$(cat "$work/textlint.json")"; then
     fail_run textlint "jq couldn't read its report" "${texts[@]}"
-  elif [ -n "$formats" ]; then
-    mapfile -t -O "${#notes[@]}" notes <<<"$formats"
   fi
 }
