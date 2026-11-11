@@ -15,4 +15,5 @@ jobs:
       # lefthook.yml on every file.
       - uses: ./
       - run: tests/run.sh
+      - run: tests/setup.sh
       - run: tests/consumer.sh

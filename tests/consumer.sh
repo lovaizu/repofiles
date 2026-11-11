@@ -1,11 +1,10 @@
 #!/bin/bash
-# Runs ci.sh, as the action does, in a new repository whose lefthook.yml
-# names this repository in remotes, at the commit checked out here. The
-# repository chooses the languages by the files in configs. With one
-# language, its job checks each file. With both, the repository gives each
-# job its files by glob. The repository changes the settings of the tools in
-# their own files, which the checks lay over their defaults. A run that
-# checks no file would pass, and that's what this test catches.
+# Runs ci.sh, as the action does, and a commit, in a new repository that
+# setup.sh sets up from a clone of this repository at a tag of its own.
+# The repository turns off a language with skip: true, and gives each job
+# its files by glob, in lefthook-repo.yml. It changes the settings of the
+# tools in their own files, which the checks lay over their defaults. A run
+# that checks no file would pass, and that's what this test catches.
 set -uo pipefail
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 dir="$(mktemp -d)"
@@ -16,7 +15,7 @@ failed=0
 run=(bash "$here/ci.sh")
 # Fails the test when the command doesn't exit $1 with each text that the
 # rest names, or prints a line that matches the extended regular expression
-# $2, which the case leaves out.
+# $2, if any, which the case leaves out.
 expect() {
   local code="$1" left="$2" out status want
   shift 2
@@ -25,7 +24,7 @@ expect() {
   for want in "$@"; do
     grep -qF -- "$want" <<<"$out" || status="$status, without $want"
   done
-  grep -qE -- "$left" <<<"$out" && status="$status, with $left"
+  [ -z "$left" ] || ! grep -qE -- "$left" <<<"$out" || status="$status, with $left"
   if [ "$status" != "$code" ]; then
     echo "Failed: ${run[*]} should exit $code with $*, but it exited $status with:"
     echo "$out"
@@ -34,12 +33,15 @@ expect() {
 }
 
 # lefthook fetches a remote by a branch or a tag, so this commit gets a tag
-# of its own in a copy of this repository.
-git clone -q "$here" "$dir/checks"
-git -C "$dir/checks" checkout -q "$(git -C "$here" rev-parse HEAD)"
-git -C "$dir/checks" tag test
+# of its own in a copy of this repository. Git fetches the URL that
+# setup.sh writes from that copy.
+git clone -q "$here" "$dir/repofiles"
+git -C "$dir/repofiles" checkout -q "$(git -C "$here" rev-parse HEAD)"
+git -C "$dir/repofiles" tag v9.9.9
+export GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0="url.$dir/repofiles.insteadOf" GIT_CONFIG_VALUE_0=https://github.com/lovaizu/repofiles
 git init -q "$dir/consumer"
 cd "$dir/consumer" || exit 1
+"$dir/repofiles/setup.sh" . >/dev/null || { echo "Failed: setup.sh should set up the repository."; exit 1; }
 # Cases with findings, as tests/run.sh knows them, and a file that the
 # globs leave out. The English README names a Japanese key, which the
 # Japanese rules would read as a sentence of Japanese.
@@ -52,39 +54,31 @@ cp "$here/tests/cases/english/fail-english.md" left-out.txt
 cp "$here/LICENSE" "$here/mise.lock" .
 git add -A
 
-# With english.yml alone, only the English job runs, and Vale checks each
-# file, the README with its Japanese key too.
-cat >lefthook.yml <<YAML
-remotes:
-  - git_url: $dir/checks
-    ref: test
-    configs:
-      - english.yml
-YAML
-expect 1 "japanese ❯" "english ❯" Google.Latin "Vale on README.md" "Vale on left-out.txt" "Vale on LICENSE" "Vale on mise.lock"
+# With no lefthook-repo.yml, both jobs check each file, and textlint fails
+# on each file of a format that it doesn't read.
+expect 1 "" "english ❯" "japanese ❯" "Vale on README.md" "Vale on LICENSE" "textlint on docs/ja/guide.md" "textlint didn't check" "lefthook.yml" "with glob or exclude in lefthook-repo.yml"
+# With the Japanese job off, only the English one runs, and Vale checks
+# each file, the shared files and the README with its Japanese key too.
 # The repository leaves out the files that hold no prose, as the README
 # says.
-cat >>lefthook.yml <<YAML
+cat >lefthook-repo.yml <<YAML
 pre-commit:
   jobs:
     - name: english
       exclude:
         - LICENSE
         - "*.lock"
+    - name: japanese
+      skip: true
 YAML
-expect 1 "Vale on (LICENSE|mise.lock)" Google.Latin "Vale on README.md"
+git add lefthook-repo.yml
+expect 1 "japanese ❯|Vale on (LICENSE|mise.lock|lefthook.yml|lefthook-repo.yml|.github/workflows/checks.yml)" "japanese (skip)" Google.Latin "Vale on README.md" "Vale on left-out.txt"
 
-# With both files, the repository gives each job its files. With
+# With both languages, the repository gives each job its files. With
 # doublestar, *.md matches the files in the root alone, and
 # docs/ja/**/*.md matches the files right in docs/ja too.
-cat >lefthook.yml <<YAML
+cat >lefthook-repo.yml <<YAML
 glob_matcher: doublestar
-remotes:
-  - git_url: $dir/checks
-    ref: test
-    configs:
-      - english.yml
-      - japanese.yml
 pre-commit:
   jobs:
     - name: english
@@ -92,6 +86,7 @@ pre-commit:
     - name: japanese
       glob: "docs/ja/**/*.md"
 YAML
+git add lefthook-repo.yml
 expect 1 "textlint on README.md" Google.Latin "Vale on README.md" "textlint on docs/ja/guide.md" "no-mix-dearu-desumasu (error)"
 expect 1 left-out.txt
 expect 1 "Vale on docs/ja/guide.md"
@@ -99,26 +94,23 @@ expect 1 "Vale on docs/ja/guide.md"
 # The settings of the repository change only what they name.
 printf '[*]\nGoogle.Latin = suggestion\n' >.vale.ini
 printf 'rules:\n  preset-ja-technical-writing:\n    no-mix-dearu-desumasu:\n      severity: info\n' >.textlintrc
-# lefthook would stash the changes below of a staged lefthook.yml, in a
-# repository with no commit.
 git add .vale.ini .textlintrc
 expect 0 left-out.txt "Google.Latin (suggestion)" "no-mix-dearu-desumasu (info)"
 
-# With hooks.yml of v0.1.x in configs, which lefthook skips, and a job of
-# the repository, no job of the checks runs, and ci.sh must fail too.
-cat >lefthook.yml <<YAML
-remotes:
-  - git_url: $dir/checks
-    ref: test
-    configs:
-      - hooks.yml
-pre-commit:
-  jobs:
-    - name: english
-      glob: "*.md"
-    - name: other
-      run: "true"
-YAML
-expect 1 left-out.txt "has no job of lovaizu/checks" "english.yml, japanese.yml, or both"
+# A commit runs the same checks, once lefthook installs its hooks: a
+# finding that stops the check stops the commit, and a clean text goes in.
+lefthook install >/dev/null
+run=(git commit -q -m "Add the guide")
+git rm -q -f .vale.ini
+expect 1 "" "Google.Latin (error)" "Vale on README.md"
+printf '[*]\nGoogle.Latin = suggestion\n' >.vale.ini
+git add .vale.ini
+expect 0 left-out.txt
+[ -n "$(git log --oneline 2>/dev/null)" ] || { echo "Failed: a clean commit should go in."; failed=1; }
+
+# With both languages off, no job of the checks runs, and ci.sh must fail.
+run=(bash "$here/ci.sh")
+printf 'pre-commit:\n  jobs:\n    - name: english\n      skip: true\n    - name: japanese\n      skip: true\n' >lefthook-repo.yml
+expect 1 left-out.txt "has no job of lovaizu/repofiles that is on" "leave at least one language on in lefthook-repo.yml"
 [ "$failed" -eq 0 ] && echo "The consumer cases passed."
 exit "$failed"

@@ -52,7 +52,7 @@ is_text() {
     *) fail_run "The checks" "they couldn't read it" "$1"; return 1 ;;
   esac
   iconv -f UTF-8 -t UTF-8 "$1" >/dev/null 2>&1 && return
-  notes+=("The checks didn't check $1: it isn't text in UTF-8, the only encoding that they read. Fix: write it in UTF-8, or leave it out of the job, with exclude in lefthook.yml.")
+  notes+=("The checks didn't check $1: it isn't text in UTF-8, the only encoding that they read. Fix: write it in UTF-8, or leave it out of the job, with exclude in lefthook-repo.yml.")
   return 1
 }
 
@@ -120,7 +120,7 @@ check_japanese() {
   if [ "$status" -ne 0 ]; then
     fail_run textlint "Node exited $status" "${texts[@]}"
   elif ! add_findings textlint "$(cat "$work/textlint.json")" || ! formats="$(jq -r '.notes | group_by(.reason)[]
-    | "textlint didn'"'"'t check \(map(.file) | join(", ")): \(.[0].reason). Fix: leave each file out of the job japanese, with glob or exclude in lefthook.yml."' "$work/textlint.json" 2>"$work/err")"; then
+    | "textlint didn'"'"'t check \(map(.file) | join(", ")): \(.[0].reason). Fix: leave each file out of the job japanese, with glob or exclude in lefthook-repo.yml."' "$work/textlint.json" 2>"$work/err")"; then
     fail_run textlint "jq couldn't read its report" "${texts[@]}"
   elif [ -n "$formats" ]; then
     mapfile -t -O "${#notes[@]}" notes <<<"$formats"

@@ -1,12 +1,60 @@
-# Lovaizu checks
+# Lovaizu repofiles
 
-The checks that lovaizu repositories share. Each repository names this one in its `lefthook.yml`, and gets the same checks before each commit and in CI.
+The files that lovaizu repositories share, as dotfiles are for a home directory. `setup.sh` puts them into a repository, or updates them there, at a version of this repository. With these files, a repository runs the checks of this repository at that version before each commit and in CI.
+
+The shared files hold no setting of a repository. A repository keeps its own settings, such as the files of each check, its vocabulary, `.vale.ini` and `.textlintrc`, in files that `setup.sh` doesn't change.
+
+## Set up a repository
+
+Install [mise](https://mise.jdx.dev/installing-mise.html) and [lefthook](https://lefthook.dev). Clone this repository, check out the tag of the version to put, and run `setup.sh` with the path of the repository:
+
+```sh
+git clone https://github.com/lovaizu/repofiles
+git -C repofiles checkout v1.0.0
+repofiles/setup.sh ~/work/lovaizu/telldes
+```
+
+`setup.sh` puts these files, each at that version:
+
+- `lefthook.yml`, which names this repository in `remotes`, at the tag, with `english.yml` and `japanese.yml` in `configs`. It extends `lefthook-repo.yml`, the lefthook settings of the repository.
+- `.github/workflows/checks.yml`, which runs the action of this repository, at the commit of the tag, on every file.
+
+Then commit the files, and run `lefthook install` once in each clone of the repository. The first run installs the tools of `mise.toml` with the sha256 of `mise.lock`, and textlint and its rules with the integrity of `textlint/package-lock.json`, into `~/.cache/lovaizu-repofiles`.
+
+`setup.sh` replaces only a file that it put, and writes a file only when it changes, so a second run with the same version changes nothing. Where the repository has a file of its own at the path of a shared file, `setup.sh` puts nothing and names that file.
+
+To update a repository to a newer version, check out its tag in the clone of this repository, and run `setup.sh` again. The next commit fetches the new version of the checks.
+
+### Move from lovaizu/checks
+
+A repository that names lovaizu/checks in its `lefthook.yml` holds its own settings there. Move them first:
+
+1. Move the jobs of `pre-commit` and any other setting of the repository from `lefthook.yml` to `lefthook-repo.yml`. Leave out `remotes`.
+1. For each language that `configs` doesn't name, turn its job off in `lefthook-repo.yml` with `skip: true`.
+1. Delete `lefthook.yml`, and the step `uses: lovaizu/checks@...` of the workflow that runs it.
+1. Run `setup.sh`.
+
+## Release a version
+
+A version is a tag of this repository, as each repository names its version by its tag in `lefthook.yml`, and by the commit of the tag in its workflow. To release one:
+
+1. Merge the changes to `main`, with the tests passing.
+1. Tag the commit of `main` with the next version, by [Semantic Versioning](https://semver.org), and push the tag:
+
+   ```sh
+   git tag v1.1.0 origin/main
+   git push origin v1.1.0
+   ```
+
+1. Update each repository with `setup.sh` from that tag.
+
+A change that a repository must follow, such as a new file of settings, is a major version, and the release says what to change.
 
 ## What it checks
 
 The checks are for the text that people and agents read. They stop text that falls short of the standard, so that the writer looks at it again and rewrites it for its reader.
 
-Each language has a file and a job of its own, as which languages a repository holds, and in which files, is the case of each repository:
+The checks of each language:
 
 - `english` of `english.yml` checks the English, by [Vale](https://vale.sh) with the [Google developer documentation style](https://developers.google.com/style).
 - `japanese` of `japanese.yml` checks the Japanese, by [textlint](https://textlint.org). It runs these rules:
@@ -14,7 +62,7 @@ Each language has a file and a job of its own, as which languages a repository h
   - [`@textlint-ja/textlint-rule-preset-ai-writing`](https://github.com/textlint-ja/textlint-rule-preset-ai-writing)
   - [`textlint-rule-ja-hiragana-keishikimeishi`](https://github.com/lostandfound/textlint-rule-ja-hiragana-keishikimeishi), [`textlint-rule-ja-hiragana-hojodoushi`](https://github.com/lostandfound/textlint-rule-ja-hiragana-hojodoushi) and [`textlint-rule-ja-hiragana-fukushi`](https://github.com/lostandfound/textlint-rule-ja-hiragana-fukushi)
   - [`textlint-rule-ja-space-between-half-and-full-width`](https://github.com/textlint-ja/textlint-rule-ja-space-between-half-and-full-width), with `space: never`
-  - `ja-no-unneeded-comma` of these checks, in [`textlint/unneeded-comma.mjs`](textlint/unneeded-comma.mjs). It finds the comma `、` after the clause at the head of a sentence, where the clause can modify only one part of the rest. By default, the clause has at most 30 characters, and the sentence at most 60. The options `maxHead` and `maxSentence` change these.
+  - `ja-no-unneeded-comma` of this repository, in [`textlint/unneeded-comma.mjs`](textlint/unneeded-comma.mjs). It finds the comma `、` after the clause at the head of a sentence, where the clause can modify only one part of the rest. By default, the clause has at most 30 characters, and the sentence at most 60. The options `maxHead` and `maxSentence` change these.
   - [`textlint-rule-prh`](https://github.com/textlint-rule/textlint-rule-prh), when the repository names its dictionary
   - The filters [`textlint-filter-rule-allowlist`](https://github.com/textlint/textlint-filter-rule-allowlist) and [`textlint-filter-rule-comments`](https://github.com/textlint/textlint-filter-rule-comments)
 
@@ -24,38 +72,30 @@ A finding at the level warning or error stops the commit. A finding at a lower l
 
 The report says what the checks are for before the findings, and again in short after them.
 
-## Use it in a repository
+## Choose the files of each check
 
-Install [mise](https://mise.jdx.dev/installing-mise.html) and [lefthook](https://lefthook.dev). Then name this repository in `lefthook.yml`, at a tag, and name in `configs` the file of each language that your repository holds. Neither job has a glob of its own, so a job checks each staged file unless you give it its files with `glob` and `exclude`.
+Each language has a job of its own in `lefthook.yml`, as which languages a repository holds, and in which files, is the case of each repository. Neither job has a glob of its own, so a job checks each staged file unless you give it its files with `glob` and `exclude` in `lefthook-repo.yml`. The settings of the checks take precedence over those of `lefthook-repo.yml`, so `lefthook-repo.yml` can add a setting to a job, and can't change one that the checks set, such as its script.
 
-For a repository that holds only English, the job checks each staged file, including the files that hold no prose, such as `LICENSE` and a lockfile, and their findings stop the commit. Leave those files out with `exclude`. Which files to leave out is the case of your repository. For example:
+For a repository that holds only English, turn off the job `japanese` with `skip: true`. The job `english` checks each staged file, including the files that hold no prose, such as `LICENSE` and a lockfile, and their findings stop the commit. Leave those files out with `exclude`. Which files to leave out is the case of your repository. For example:
 
 ```yaml
-remotes:
-  - git_url: https://github.com/lovaizu/checks
-    ref: v0.2.0
-    configs:
-      - english.yml
-
 pre-commit:
   jobs:
     - name: english
       exclude:
         - LICENSE
         - "*.lock"
+    - name: japanese
+      skip: true
 ```
 
-For a repository that holds only Japanese, give the job only the files of a format that textlint reads, such as Markdown. Each other file that you stage, such as `lefthook.yml` and `.textlintrc`, fails the check. For example:
+For a repository that holds only Japanese, turn off the job `english`, and give the job `japanese` only the files of a format that textlint reads, such as Markdown. Each other file that you stage, such as `lefthook.yml` and `.textlintrc`, fails the check. For example:
 
 ```yaml
-remotes:
-  - git_url: https://github.com/lovaizu/checks
-    ref: v0.2.0
-    configs:
-      - japanese.yml
-
 pre-commit:
   jobs:
+    - name: english
+      skip: true
     - name: japanese
       glob: "*.md"
 ```
@@ -66,13 +106,6 @@ For a repository that holds both languages, give each job its files, or each job
 
 ```yaml
 glob_matcher: doublestar
-remotes:
-  - git_url: https://github.com/lovaizu/checks
-    ref: v0.2.0
-    configs:
-      - english.yml
-      - japanese.yml
-
 pre-commit:
   jobs:
     - name: english
@@ -83,21 +116,11 @@ pre-commit:
       glob: "docs/ja/**/*.md"
 ```
 
-With [`glob_matcher: doublestar`](https://lefthook.dev/configuration/glob_matcher/), `*.md` matches only the files in the root, and `docs/ja/**/*.md` matches the files in `docs/ja` and below. To turn off a language, leave its file out of `configs`. The settings of the files in `configs` take precedence over those of your `lefthook.yml`, so `skip: true` on a job doesn't turn it off.
-
-From v0.1.x, write `english.yml`, `japanese.yml`, or both in `configs` in place of `hooks.yml`. lefthook skips a file of `configs` that doesn't exist and says nothing, and `ci.sh` fails when no job of these checks remains.
-
-Run `lefthook install` once in each clone. In CI, add this step after `actions/checkout`, at the commit of the same tag:
-
-```yaml
-- uses: lovaizu/checks@<commit of v0.2.0>
-```
-
-The first run installs the tools of `mise.toml` with the sha256 of `mise.lock`, and textlint and its rules with the integrity of `textlint/package-lock.json`, into `~/.cache/lovaizu-repofiles`.
+With [`glob_matcher: doublestar`](https://lefthook.dev/configuration/glob_matcher/), `*.md` matches only the files in the root, and `docs/ja/**/*.md` matches the files in `docs/ja` and below. `ci.sh` fails when both jobs are off, as it would check nothing.
 
 ## Change a setting
 
-Change a setting when the case of your repository needs it. The people of the repository decide it, not an agent that wants a finding to go away. Write only what you change: the checks lay your file over their defaults. The checks find the settings of each file from the directory of the file up to the root of the repository, and no further. So a settings file applies to each file in its directory and below, and a file with none gets the defaults alone. To leave out a file, use `exclude` of its job in `lefthook.yml`.
+Change a setting when the case of your repository needs it. The people of the repository decide it, not an agent that wants a finding to go away. Write only what you change: the checks lay your file over their defaults. The checks find the settings of each file from the directory of the file up to the root of the repository, and no further. So a settings file applies to each file in its directory and below, and a file with none gets the defaults alone. To leave out a file, use `exclude` of its job in `lefthook-repo.yml`.
 
 ### English
 
@@ -148,4 +171,4 @@ A `.textlintrc.js` or `.textlintrc.cjs` fails the check, as JavaScript can't mer
 - A tool: change its version in `mise.toml`, then run `mise lock --platform linux-x64,linux-arm64,macos-arm64,macos-x64`.
 - textlint or a rule: change its version in `textlint/package.json`, then run `npm install --package-lock-only --ignore-scripts` in `textlint`.
 
-`tests/run.sh` checks that each case in `tests/cases/english` and `tests/cases/japanese` passes, shows, or fails as its name says, and checks each thing that the checks must do with one case. `tests/consumer.sh` checks a repository that names this one, with one language and with both, with its own globs, `.vale.ini` and `.textlintrc`.
+`tests/run.sh` checks that each case in `tests/cases/english` and `tests/cases/japanese` passes, shows, or fails as its name says, and checks each thing that the checks must do with one case. `tests/setup.sh` runs `setup.sh` on a new repository, on one with its own `lefthook.yml`, and again at the same tag and at a newer one. `tests/consumer.sh` runs `ci.sh` and a commit in a repository that `setup.sh` sets up, with one language and with both, with its own globs, `.vale.ini` and `.textlintrc`.

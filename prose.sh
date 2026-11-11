@@ -2,7 +2,7 @@
 # Checks the prose of each file given, in the language that the first
 # argument names: english, by Vale with the Google developer documentation
 # style, or japanese, by textlint. The repository chooses the files of each
-# language, with the glob of each job in its lefthook.yml.
+# language, with the glob of each job in its lefthook-repo.yml.
 # A finding at the level warning or error fails, and a finding at a lower
 # level shows in the report. A check that can't run fails too, as it would
 # let a finding through.
