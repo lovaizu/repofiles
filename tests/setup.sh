@@ -21,6 +21,8 @@ expect() {
 
 git clone -q "$here" "$dir/repofiles"
 git -C "$dir/repofiles" checkout -q "$(git -C "$here" rev-parse HEAD)"
+# The cases set the tags, so they run the same on a branch and on a tag.
+git -C "$dir/repofiles" tag -l | xargs -r git -C "$dir/repofiles" tag -d >/dev/null
 setup="$dir/repofiles/setup.sh"
 git init -q "$dir/repo"
 
