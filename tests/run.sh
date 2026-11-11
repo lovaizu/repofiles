@@ -131,6 +131,14 @@ printf '{"rules": {"ja-no-unneeded-comma": false}}\n' >"$tmp/comma/.textlintrc.j
 run_in "$tmp/comma" japanese fail-japanese-comma.md
 [ "$status" -eq 0 ] && [ -z "$out" ] || { echo "Failed: ja-no-unneeded-comma: false should turn off the rule, but the check exited $status with:"; echo "$out"; failed=1; }
 
+# textlint leaves out each finding in a sentence that holds no Japanese, and
+# keeps those of a Japanese sentence of the same file.
+mkdir -p "$tmp/mixed"
+printf '%s\n\n%s\n' "The japanese check reads each sentence of this file, and this English sentence runs well past the length that the rule allows, so it would fail if the check read it as Japanese." "$(sed -n 3p "$here/cases/japanese/fail-japanese.md")" >"$tmp/mixed/mixed.md"
+run_in "$tmp/mixed" japanese mixed.md
+want "a file in English and Japanese" 1 "Line 3, ja-technical-writing/no-mix-dearu-desumasu (error)"
+[ "$(grep -c '^- Line' <<<"$out")" -eq 1 ] || { echo "Failed: mixed.md should get only the finding of its Japanese sentence, but got:"; echo "$out"; failed=1; }
+
 # Each package that the checks load is in textlint/package.json, which
 # pins it.
 for module in $(grep -ohE 'require\("[^"]+"\)' "$here"/../textlint/*.mjs | sed -E 's/require\("((@[^/"]+\/)?[^/"]+)[^"]*"\)/\1/' | sort -u); do

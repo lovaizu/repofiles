@@ -47,6 +47,8 @@ expect "gh issue create --title 'Add it' --body \"\$(cat <<'EOF'
 EOF
 )\"" "no-mix-dearu-desumasu (error)"
 expect "gh pr edit 1 --title 'Use e.g. this'" "Vale on the title of gh pr edit:"
+# The japanese check passes an English text, which it reads by sentence.
+expect "gh pr create --title 'Add it' --body 'This body runs well past the length that a Japanese sentence may have, as an English sentence often does, and the japanese check leaves it out.'"
 printf 'Use a tool, such as Vale.\n' >notes.md
 expect "gh pr create --title 'Add it' --body 'Use a tool, such as Vale.'"
 expect "gh issue comment 1 -F notes.md"

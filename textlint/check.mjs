@@ -24,6 +24,9 @@ const { createLinter } = require("textlint");
 // each. textlint finds a rule only in node_modules, so the checks load
 // these themselves, with the options of the settings.
 const own = { "ja-no-unneeded-comma": "./unneeded-comma.mjs" };
+// The filter that leaves out each finding in a sentence that holds no
+// Japanese, which no settings change, as the check is for Japanese only.
+const sentences = (await import(new URL("./japanese-sentences.mjs", import.meta.url))).default(require);
 
 // Loads settings $config, the $n-th, for textlint.
 async function load(config, n) {
@@ -40,7 +43,8 @@ async function load(config, n) {
   fs.writeFileSync(configFilePath, JSON.stringify({ ...config, rules: settingsRules }, null, 2));
   const loaded = await loadConfig({ configFilePath, node_modulesDir: modules });
   if (!loaded.ok) throw new Error([loaded.error.message, ...loaded.error.errors.map((error) => error.message)].join(": "));
-  const { plugins, filterRules } = loaded.config;
+  const { plugins } = loaded.config;
+  const filterRules = [...loaded.config.filterRules, { ruleId: "japanese-sentences", rule: sentences, options: {} }];
   const rules = [...loaded.config.rules, ...ownRules];
   // The level that the settings give each rule, by the ID that textlint
   // reports. textlint drops this level from a finding that a rule reports
