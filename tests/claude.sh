@@ -30,6 +30,8 @@ git -C "$dir/repofiles" tag v9.9.9
 export GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0="url.$dir/repofiles.insteadOf" GIT_CONFIG_VALUE_0=https://github.com/lovaizu/repofiles
 git init -q "$dir/repo"
 cd "$dir/repo" || exit 1
+# Claude Code gives each hook the root of the project.
+export CLAUDE_PROJECT_DIR="$dir/repo"
 "$dir/repofiles/setup.sh" . >/dev/null
 hook="$(jq -r '.hooks.PreToolUse[0].hooks[0].command' .claude/settings.json)"
 # Without lefthook install, and with no way to fetch the version, lefthook
@@ -47,6 +49,9 @@ expect "gh issue create --title 'Add it' --body \"\$(cat <<'EOF'
 EOF
 )\"" "no-mix-dearu-desumasu (error)"
 expect "gh pr edit 1 --title 'Use e.g. this'" "Vale on the title of gh pr edit:"
+expect "gh pr create -t 'Add it' -b 'Use a tool, e.g. Vale.'" "Vale on the body of gh pr create:"
+expect "gh pr create -t 'Use e.g. this' --fill" "the commits of --fill"
+expect "gh pr create --title 'Add it' --body 'B' )" "couldn't read it as Bash"
 printf 'Use a tool, such as Vale.\n' >notes.md
 expect "gh pr create --title 'Add it' --body 'Use a tool, such as Vale.'"
 expect "gh issue comment 1 -F notes.md"
