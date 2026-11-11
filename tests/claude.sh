@@ -8,6 +8,8 @@ here="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 dir="$(mktemp -d)"
 trap 'rm -rf "$dir"' EXIT
 failed=0
+# The commits of the test need an identity, which a runner of CI lacks.
+export GIT_AUTHOR_NAME=test GIT_AUTHOR_EMAIL=test@example.com GIT_COMMITTER_NAME=test GIT_COMMITTER_EMAIL=test@example.com
 # Runs the hook with the Bash command $1, and fails the test when the hook
 # doesn't exit $2 with each text that the rest names, or prints a line that
 # matches the extended regular expression $3, if any. A hook that prints

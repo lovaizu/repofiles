@@ -8,6 +8,8 @@ here="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 dir="$(mktemp -d)"
 trap 'rm -rf "$dir"' EXIT
 failed=0
+# The commits of the test need an identity, which a runner of CI lacks.
+export GIT_AUTHOR_NAME=test GIT_AUTHOR_EMAIL=test@example.com GIT_COMMITTER_NAME=test GIT_COMMITTER_EMAIL=test@example.com
 # Runs the command after $1 and $2, and fails the test when it doesn't exit
 # $1 with each text that $2 holds, one on each line.
 expect() {
