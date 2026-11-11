@@ -35,7 +35,7 @@ expect 1 "hasn't checked out a tag" "$setup" "$dir/repo"
 git -C "$dir/repofiles" tag v9.9.9
 expect 0 "put .claude/settings.json of v9.9.9" "$setup" "$dir/repo"
 grep -q "ref: v9.9.9" "$dir/repo/lefthook.yml" &&
-  grep -q "uses: lovaizu/repofiles@$(git -C "$here" rev-parse HEAD) # v9.9.9" "$dir/repo/.github/workflows/checks.yml" &&
+  grep -q "uses: lovaizu/repofiles@$(git -C "$here" rev-parse HEAD) # v9.9.9" "$dir/repo/.github/workflows/lint.yml" &&
   ! grep -rq '{{' "$dir/repo/lefthook.yml" "$dir/repo/.github" "$dir/repo/.claude" ||
   { echo "Failed: setup.sh should put each file with the version filled in."; failed=1; }
 

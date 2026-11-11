@@ -1,11 +1,11 @@
 // Checks the Japanese of each file given with textlint, with the settings
 // of config.mjs, and writes a report as JSON to <work>/textlint.json:
-// {files: [{file, findings: [{line, check, level, message}]}], notes:
-// [{file, reason}]}, with a note for each file of a format that textlint
-// doesn't read. A rule can print to stdout, so the report goes to a file
-// of its own. Any other failure stops Node, and lib/lib.sh shows it.
+// {files: [{file, findings: [{line, check, level, message}]}]}. It leaves
+// out a file of a format that textlint doesn't read, as it has no prose for
+// textlint. A rule can print to stdout, so the report goes to a file of its
+// own. Any other failure stops Node, and lib/lib.sh shows it.
 //
-// Usage: node check.mjs <node_modules> <work> <file>...
+// Usage: node check.mjs <node_modules> <work> <files>, with one file or more.
 //
 // It lints each file by its text, not by its path, as textlint reads a
 // path as a glob: the name [x].md would match only x.md.
@@ -50,23 +50,18 @@ async function load(config, n) {
   // The descriptor that loadTextlintrc of textlint builds from the same
   // settings, with the plugins that textlint always has first.
   const descriptor = (await loadBuiltinPlugins()).shallowMerge({ rules, filterRules, plugins: [...builtInPlugins, ...plugins], configBaseDir: work });
-  // A plugin reads an extension only if no plugin before it reads it.
-  const extensions = [...new Set(descriptor.availableExtensions)].join(", ");
-  return { levels, descriptor, extensions, linter: createLinter({ descriptor }) };
+  return { levels, descriptor, linter: createLinter({ descriptor }) };
 }
 
 // The linter of each settings file, which config.mjs finds for the
 // directory of each file.
 const linters = new Map();
-const report = { files: [], notes: [] };
+const report = { files: [] };
 for (const file of files) {
   const { config, source } = settings(modules, path.dirname(path.resolve(file)), process.cwd());
   if (!linters.has(source)) linters.set(source, await load(config, linters.size));
-  const { levels, descriptor, extensions, linter } = linters.get(source);
-  if (!descriptor.findPluginDescriptorWithExt(path.extname(file))) {
-    report.notes.push({ file, reason: `textlint reads only the files that end in ${extensions}` });
-    continue;
-  }
+  const { levels, descriptor, linter } = linters.get(source);
+  if (!descriptor.findPluginDescriptorWithExt(path.extname(file))) continue;
   const result = await linter.lintText(fs.readFileSync(file, "utf8"), path.resolve(file));
   // textlint gives each finding a level by number: 1 warning, 2 error and 3
   // info. The level that the settings name for a rule comes first.

@@ -9,24 +9,24 @@ The files that lovaizu repositories share, as dotfiles are for a home directory.
 Install [mise](https://mise.jdx.dev/installing-mise.html) and [lefthook](https://lefthook.dev). Then, in a clone of this repository, check out the tag of the version, and run `setup.sh` with the path of the repository:
 
 ```sh
-git -C repofiles checkout v1.0.0
+git -C repofiles checkout v0.2.0
 repofiles/setup.sh ~/work/lovaizu/telldes
 ```
 
-`setup.sh` puts `lefthook.yml`, `.github/workflows/checks.yml` and `.claude/settings.json`, each with that version. It never overwrites a file that it didn't put, and names any such file. Commit the files, and run `lefthook install` once in each clone of the repository.
+`setup.sh` puts `lefthook.yml`, `.github/workflows/lint.yml`, `.claude/settings.json` and `.claude/hooks/check-texts.sh`, each with that version. It never overwrites a file that it didn't put, and names any such file. Commit the files, and run `lefthook install` once in each clone of the repository.
 
 To update, check out the newer tag, and run `setup.sh` again.
 
 ## Settings of a repository
 
-`lefthook-repo.yml` holds the lefthook settings of the repository: the files of each check, and the checks that it turns off. For example, to leave out `LICENSE` and to turn off the Japanese check:
+`lefthook-repo.yml` holds the lefthook settings of the repository: the files of each check, and the checks that it turns off. For example, to leave out the files of `vendor/` and to turn off the Japanese check:
 
 ```yaml
 pre-commit:
   jobs:
     - name: english
       exclude:
-        - LICENSE
+        - "vendor/**"
     - name: japanese
       skip: true
 ```
@@ -37,7 +37,7 @@ A `.vale.ini` or `.textlintrc` in the repository changes the rules of the check 
 
 ## What the checks check
 
-A finding at the level warning or error stops the text, and a lower one only shows.
+A finding at the level warning or error stops the text, and a lower one only shows. Each check reads only the files whose prose its tool reads apart from the code. Vale reads markup, such as Markdown, and the comments of code, of YAML, and of TOML. textlint reads Markdown and plain text. The checks leave out any other file, such as JSON, a shell script, or a file with no extension, as the tool would read its code as prose.
 
 - `english` checks English by [Vale](https://vale.sh) with the [Google developer documentation style](https://developers.google.com/style).
 - `japanese` checks Japanese by [textlint](https://textlint.org), with these rules:
@@ -56,8 +56,8 @@ The Claude Code hook gives the title, body and comment of each `gh issue` and `g
 A version is a tag of this repository. Merge the changes to `main` with the tests passing, then tag that commit by [Semantic Versioning](https://semver.org), and push the tag:
 
 ```sh
-git tag v1.1.0 origin/main
-git push origin v1.1.0
+git tag v0.2.1 origin/main
+git push origin v0.2.1
 ```
 
 After a change of a tool in `mise.toml`, run `mise lock --platform linux-x64,linux-arm64,macos-arm64,macos-x64`, so that each platform has its sha256 in `mise.lock`.

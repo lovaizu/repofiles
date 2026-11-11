@@ -45,9 +45,9 @@ cd "$dir/consumer" || exit 1
 "$dir/repofiles/setup.sh" . >/dev/null || { echo "Failed: setup.sh should set up the repository."; exit 1; }
 cp "$here/tests/cases/english/fail-english.md" README.md
 cp "$here/LICENSE" .
-# The repository leaves out LICENSE and .vale.ini, and turns off Japanese.
-# The checks leave out the files that setup.sh put.
-printf 'pre-commit:\n  jobs:\n    - name: english\n      exclude:\n        - LICENSE\n        - .vale.ini\n    - name: japanese\n      skip: true\n' >lefthook-repo.yml
+# The repository turns off Japanese. The checks leave out the files that
+# setup.sh put, and LICENSE, a file with no extension.
+printf 'pre-commit:\n  jobs:\n    - name: japanese\n      skip: true\n' >lefthook-repo.yml
 git add -A
 expect 1 "Vale on (LICENSE|lefthook|.github|.claude)" "japanese (skip)" "Vale on README.md:" "Google.Latin (error)"
 # A .vale.ini of the repository changes the checks.

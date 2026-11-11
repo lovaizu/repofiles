@@ -1,4 +1,4 @@
-name: lovaizu checks
+name: lovaizu repofiles
 description: Runs on every file the pre-commit checks that the lefthook.yml of the repository names.
 # An action, not a reusable workflow, as only an action knows the commit of
 # this repository that it runs from: github.action_path. Its mise.toml is
