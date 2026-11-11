@@ -38,8 +38,16 @@ while IFS= read -r item; do
 done < <(jq -c '.[]' <<<"$texts")
 
 for job in "${jobs[@]}"; do
-  [ "${#files[@]}" -gt 0 ] || break
-  out="$("$here/prose.sh" "$job" "${files[@]}" 2>&1)" && continue
+  given=()
+  for file in "${files[@]}"; do
+    # A text has no path that a glob of the repository could match, and
+    # textlint reads an English sentence as one long Japanese sentence, so
+    # the Japanese check gets only a text that holds Japanese.
+    [ "$job" != japanese ] || jq -Rse 'test("[\\p{Hiragana}\\p{Katakana}\\p{Han}]")' "$file" >/dev/null || continue
+    given+=("$file")
+  done
+  [ "${#given[@]}" -gt 0 ] || continue
+  out="$("$here/prose.sh" "$job" "${given[@]}" 2>&1)" && continue
   for i in "${!files[@]}"; do out="${out//"${files[$i]}"/"${whats[$i]}"}"; done
   reason+="$out"$'\n\n'
 done

@@ -49,6 +49,9 @@ EOF
 expect "gh pr edit 1 --title 'Use e.g. this'" "Vale on the title of gh pr edit:"
 printf 'Use a tool, such as Vale.\n' >notes.md
 expect "gh pr create --title 'Add it' --body 'Use a tool, such as Vale.'"
+# The Japanese check gets only a text that holds Japanese, so a long English
+# sentence passes it.
+expect "gh pr create --title 'Add it' --body 'The checks read each file in the format that its extension names, and they stop the text that falls short of the standard, so that the writer rethinks it for its reader.'"
 expect "gh issue comment 1 -F notes.md"
 expect 'gh issue comment 1 --body "$text"' "The hook can't read the body of gh issue comment, as the command makes it when it runs"
 expect "gh issue comment 1 --body-file missing.md" "missing.md isn't there before the command runs"
