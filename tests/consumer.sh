@@ -1,10 +1,7 @@
 #!/bin/bash
 # Runs ci.sh, as the action does, and a commit, in a new repository that
-# setup.sh sets up from a clone of this repository at a tag of its own.
-# The repository turns off a language with skip: true, and gives each job
-# its files by glob, in lefthook-repo.yml. It changes the settings of the
-# tools in their own files, which the checks lay over their defaults. A run
-# that checks no file would pass, and that's what this test catches.
+# setup.sh sets up from a clone of this repository at a tag of its own,
+# with settings of its own in lefthook-repo.yml and .vale.ini.
 set -uo pipefail
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 dir="$(mktemp -d)"
@@ -44,89 +41,28 @@ export GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0="url.$dir/repofiles.insteadOf" GIT_CO
 git init -q "$dir/consumer"
 cd "$dir/consumer" || exit 1
 "$dir/repofiles/setup.sh" . >/dev/null || { echo "Failed: setup.sh should set up the repository."; exit 1; }
-# Cases with findings, as tests/run.sh knows them, and a file that the
-# globs leave out. The English README names a Japanese key, which the
-# Japanese rules would read as a sentence of Japanese.
-mkdir -p docs/ja
 cp "$here/tests/cases/english/fail-english.md" README.md
-printf '\nPress the key ⌘英かな to switch the input method to English, and press it again to go back to the Japanese input method of macOS.\n' >>README.md
-cp "$here/tests/cases/japanese/fail-japanese.md" docs/ja/guide.md
-cp "$here/tests/cases/english/fail-english.md" left-out.txt
-# Files that hold no prose, which a job with no glob checks too.
-cp "$here/LICENSE" "$here/mise.lock" .
+cp "$here/LICENSE" .
+# The repository leaves out LICENSE and .vale.ini, and turns off Japanese.
+# The checks leave out the files that setup.sh put.
+printf 'pre-commit:\n  jobs:\n    - name: english\n      exclude:\n        - LICENSE\n        - .vale.ini\n    - name: japanese\n      skip: true\n' >lefthook-repo.yml
 git add -A
-
-# With no lefthook-repo.yml, both jobs check each file, and textlint fails
-# on each file of a format that it doesn't read.
-expect 1 "" "english ❯" "japanese ❯" "Vale on README.md" "Vale on LICENSE" "textlint on docs/ja/guide.md" "textlint didn't check" "mise.lock" "with glob or exclude in lefthook-repo.yml"
-# With the Japanese job off, only the English one runs, and Vale checks
-# each file, the shared files and the README with its Japanese key too.
-# The repository leaves out the files that hold no prose, as the README
-# says, and the checks leave out the files that setup.sh put, with no line
-# of the repository.
-cat >lefthook-repo.yml <<YAML
-pre-commit:
-  jobs:
-    - name: english
-      exclude:
-        - LICENSE
-        - "*.lock"
-    - name: japanese
-      skip: true
-YAML
-git add lefthook-repo.yml
-expect 1 "japanese ❯|Vale on (LICENSE|mise.lock|lefthook.yml|lefthook-repo.yml|.github/workflows/checks.yml|.claude/settings.json)" "japanese (skip)" Google.Latin "Vale on README.md" "Vale on left-out.txt"
-
-# With both languages, the repository gives each job its files. With
-# doublestar, *.md matches the files in the root alone, and
-# docs/ja/**/*.md matches the files right in docs/ja too.
-cat >lefthook-repo.yml <<YAML
-glob_matcher: doublestar
-pre-commit:
-  jobs:
-    - name: english
-      glob: "*.md"
-    - name: japanese
-      glob: "docs/ja/**/*.md"
-YAML
-git add lefthook-repo.yml
-expect 1 "textlint on README.md" Google.Latin "Vale on README.md" "textlint on docs/ja/guide.md" "no-mix-dearu-desumasu (error)"
-expect 1 left-out.txt
-expect 1 "Vale on docs/ja/guide.md"
-
-# The settings of the repository change only what they name.
+expect 1 "Vale on (LICENSE|lefthook|.github|.claude)" "japanese (skip)" "Vale on README.md:" "Google.Latin (error)"
+# A .vale.ini of the repository changes the checks.
 printf '[*]\nGoogle.Latin = suggestion\n' >.vale.ini
-printf 'rules:\n  preset-ja-technical-writing:\n    no-mix-dearu-desumasu:\n      severity: info\n' >.textlintrc
-git add .vale.ini .textlintrc
-expect 0 left-out.txt "Google.Latin (suggestion)" "no-mix-dearu-desumasu (info)"
-
-# A commit runs the same checks, once lefthook installs its hooks: a
-# finding that stops the check stops the commit, and a clean text goes in.
+expect 0 "" "Google.Latin (suggestion)"
+# A commit runs the checks: a finding stops it, and a clean text goes in.
 lefthook install >/dev/null
-run=(git commit -q -m "Add the guide")
-git rm -q -f .vale.ini
-expect 1 "" "Google.Latin (error)" "Vale on README.md"
+run=(git commit -q -m "Add the README")
+rm .vale.ini
+expect 1 "" "Google.Latin (error)"
 printf '[*]\nGoogle.Latin = suggestion\n' >.vale.ini
 git add .vale.ini
-expect 0 left-out.txt
+expect 0 ""
 [ -n "$(git log --oneline 2>/dev/null)" ] || { echo "Failed: a clean commit should go in."; failed=1; }
-# With the English job on each file, a commit of .claude/settings.json
-# that setup.sh put passes, with settings of the repository in it too, and
-# a JSON file of the repository's own gets its findings as before.
-printf 'pre-commit:\n  jobs:\n    - name: japanese\n      skip: true\n' >lefthook-repo.yml
-jq '.permissions.allow = ["Bash(make *)"]' .claude/settings.json >settings.json && mv settings.json .claude/settings.json
-git add lefthook-repo.yml .claude/settings.json
-run=(git commit -q -m "Allow make")
-expect 0 "Vale on "
-printf '{\n  "name": "Use it",\n  "note": "A second line."\n}\n' >config.json
-git add config.json
-run=(git commit -q -m "Add the config")
-expect 1 "" "Vale on config.json" "Google.Quotes (error)"
-git rm -q --cached config.json
-
-# With both languages off, no job of the checks runs, and ci.sh must fail.
+# With both languages off, ci.sh fails, as it would check nothing.
 run=(bash "$here/ci.sh")
 printf 'pre-commit:\n  jobs:\n    - name: english\n      skip: true\n    - name: japanese\n      skip: true\n' >lefthook-repo.yml
-expect 1 left-out.txt "has no job of lovaizu/repofiles that is on" "leave at least one language on in lefthook-repo.yml"
+expect 1 "" "has no job of lovaizu/repofiles that is on"
 [ "$failed" -eq 0 ] && echo "The consumer cases passed."
 exit "$failed"

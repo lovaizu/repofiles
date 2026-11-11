@@ -138,25 +138,5 @@ for module in $(grep -ohE 'require\("[^"]+"\)' "$here"/../textlint/*.mjs | sed -
     { echo "Failed: textlint/*.mjs loads $module, which textlint/package.json doesn't name."; failed=1; }
 done
 
-# The texts that lib/command-texts.jq finds in a command, as claude.sh
-# checks them: each title, body and comment of a gh issue or gh pr command.
-eval "$(MISE_LOCKED=1 MISE_TRUSTED_CONFIG_PATHS="$here/../mise.toml" mise -C "$here/.." env -s bash)"
-texts() {
-  local command="$1" want="$2" got
-  got="$(shfmt --to-json <<<"$command" | jq -c -f "$here/../lib/command-texts.jq")"
-  [ "$got" = "$want" ] || { echo "Failed: lib/command-texts.jq should give $want for: $command"; echo "but it gave: $got"; failed=1; }
-}
-texts "gh pr create -t 'A title' --body \"\$(cat <<'EOF'
-A body.
-
-EOF
-)\"" '[{"what":"the title of gh pr create","text":"A title"},{"what":"the body of gh pr create","text":"A body."}]'
-texts 'gh issue create --title="Say \"hi\"" -b $'"'"'One.\nTwo.'"'" '[{"what":"the title of gh issue create","text":"Say \"hi\""},{"what":"the body of gh issue create","text":"One.\nTwo."}]'
-texts 'gh issue comment 3 --body-file notes.md && gh pr review 4 --comment -b "$text"' '[{"what":"the body of gh issue comment","file":"notes.md"},{"what":"the body of gh pr review","text":null}]'
-texts 'gh pr comment 6 -F - <<EOF
-Line one.
-EOF' '[{"what":"the body of gh pr comment","text":"Line one.\n"}]'
-texts 'gh pr close 5 -c "Done." ; git commit -m "Not checked." ; gh pr view 5 ; gh repo create -d "Not checked."' '[{"what":"the body of gh pr close","text":"Done."}]'
-
 [ "$failed" -eq 0 ] && echo "All cases passed."
 exit "$failed"

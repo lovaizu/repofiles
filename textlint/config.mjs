@@ -6,9 +6,11 @@
 // directory up, but only up to the root of the repository, as a settings
 // file above it is of another repository: in each directory, .textlintrc.cjs,
 // .textlintrc.js, .textlintrc.json, .textlintrc.yaml, .textlintrc.yml and
-// .textlintrc, then the field textlint of package.json. "Change a setting"
-// in README.md says how the settings of the repository lie over the
-// defaults.
+// .textlintrc, then the field textlint of package.json. The settings of
+// the repository change only what they name: an object merges key by key,
+// an array adds its items, true turns on a rule with the options of the
+// defaults, and any other value takes the place of the default. A rule is
+// the same by its short name and by the name of its package.
 import { createRequire } from "node:module";
 import fs from "node:fs";
 import path from "node:path";
