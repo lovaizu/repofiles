@@ -85,7 +85,7 @@ finding textlint fail-japanese.md "no-mix-dearu-desumasu (error)"
 finding textlint docs/deep/fail-japanese.md "no-mix-dearu-desumasu (info)"
 
 # A tool that fails stops the commit, with all that it printed and the fix.
-fix="Otherwise, run $(cd "$here/.." && pwd)/setup.sh again, and if the check still fails, report it with this message in an issue of https://github.com/lovaizu/checks/issues."
+fix="Otherwise, run $(cd "$here/.." && pwd)/install.sh again, and if the check still fails, report it with this message in an issue of https://github.com/lovaizu/repofiles/issues."
 mkdir -p "$tmp/broken"
 cp "$here/cases/english/pass-english.md" "$here/cases/japanese/pass-japanese.md" "$tmp/broken/"
 printf '[*]\nBasedOnStyles = NoSuchStyle\n' >"$tmp/broken/.vale.ini"

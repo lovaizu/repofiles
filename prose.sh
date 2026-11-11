@@ -11,7 +11,7 @@ set -uo pipefail
 # another directory.
 unset CDPATH
 here="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)"
-"$here/setup.sh" || exit 1
+"$here/install.sh" || exit 1
 . "$here/lib/lib.sh"
 
 language="${1:-}"

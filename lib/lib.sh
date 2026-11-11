@@ -1,7 +1,7 @@
 # The checks of prose.sh. Vale checks the English with the Google developer
 # documentation style, and textlint checks the Japanese. Each check adds its
 # findings to $fails or $shows, by the level that the tool gives them, and a
-# note for each file that it didn't check to $notes. Run setup.sh first, as
+# note for each file that it didn't check to $notes. Run install.sh first, as
 # prose.sh does.
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -35,7 +35,7 @@ fail_run() {
   local tool="$1" reason="$2" files
   shift 2
   files="$(printf '%s, ' "$@")"
-  notes+=("$tool didn't check ${files%, }: $reason. Fix: if the output names a file of the repository, correct it. Otherwise, run $root/setup.sh again, and if the check still fails, report it with this message in an issue of $issues."$'\n'"  stdout:"$'\n'"$(sed 's/^/    /' "$work/out")"$'\n'"  stderr:"$'\n'"$(sed 's/^/    /' "$work/err")")
+  notes+=("$tool didn't check ${files%, }: $reason. Fix: if the output names a file of the repository, correct it. Otherwise, run $root/install.sh again, and if the check still fails, report it with this message in an issue of $issues."$'\n'"  stdout:"$'\n'"$(sed 's/^/    /' "$work/out")"$'\n'"  stderr:"$'\n'"$(sed 's/^/    /' "$work/err")")
 }
 
 # Succeeds where file $1 holds text for the tools. A file that isn't

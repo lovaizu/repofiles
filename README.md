@@ -93,7 +93,7 @@ Run `lefthook install` once in each clone. In CI, add this step after `actions/c
 - uses: lovaizu/checks@<commit of v0.2.0>
 ```
 
-The first run installs the tools of `mise.toml` with the sha256 of `mise.lock`, and textlint and its rules with the integrity of `textlint/package-lock.json`, into `~/.cache/lovaizu-checks`.
+The first run installs the tools of `mise.toml` with the sha256 of `mise.lock`, and textlint and its rules with the integrity of `textlint/package-lock.json`, into `~/.cache/lovaizu-repofiles`.
 
 ## Change a setting
 
