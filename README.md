@@ -37,7 +37,7 @@ A `.vale.ini` or `.textlintrc` in the repository changes the rules of the check 
 
 ## What the checks check
 
-A finding at the level warning or error stops the text, and a lower one only shows. Each check reads only the files whose prose its tool reads apart from the code. Vale reads markup, such as Markdown, and the comments of code, of YAML, and of TOML. textlint reads Markdown and plain text. The checks leave out any other file, such as JSON, a shell script, or a file with no extension, as the tool would read its code as prose.
+A finding at the level warning or error stops the text, and a lower one only shows. Each check reads the Markdown files, the files that people read and the prompts, unless the repository gives it other files with `glob` in its `lefthook-repo.yml`. Of the files it gets, each check reads only those whose prose its tool reads apart from the code. Vale reads markup, such as Markdown, and the comments of code, of YAML, and of TOML. textlint reads Markdown and plain text. The checks leave out any other file, such as JSON, a shell script, or a file with no extension, as the tool would read its code as prose.
 
 - `english` checks English by [Vale](https://vale.sh) with the [Google developer documentation style](https://developers.google.com/style).
 - `japanese` checks Japanese by [textlint](https://textlint.org), with these rules:

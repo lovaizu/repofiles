@@ -45,11 +45,13 @@ cd "$dir/consumer" || exit 1
 "$dir/repofiles/setup.sh" . >/dev/null || { echo "Failed: setup.sh should set up the repository."; exit 1; }
 cp "$here/tests/cases/english/fail-english.md" README.md
 cp "$here/LICENSE" .
+printf '# Use a tool, e.g. Vale.\nprint(1)\n' >tool.py
 # The repository turns off Japanese. The checks leave out the files that
-# setup.sh put, and LICENSE, a file with no extension.
+# setup.sh put, LICENSE, a file with no extension, and tool.py, as they read
+# only Markdown unless the repository names other files.
 printf 'pre-commit:\n  jobs:\n    - name: japanese\n      skip: true\n' >lefthook-repo.yml
 git add -A
-expect 1 "Vale on (LICENSE|lefthook|.github|.claude)" "japanese (skip)" "Vale on README.md:" "Google.Latin (error)"
+expect 1 "Vale on (LICENSE|tool.py|lefthook|.github|.claude)" "japanese (skip)" "Vale on README.md:" "Google.Latin (error)"
 # A .vale.ini of the repository changes the checks.
 printf '[*]\nGoogle.Latin = suggestion\n' >.vale.ini
 expect 0 "" "Google.Latin (suggestion)"
