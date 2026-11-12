@@ -55,6 +55,10 @@ expect "gh pr create --title 'Add it' --body 'B' )" "couldn't read it as Bash"
 printf 'Use a tool, such as Vale.\n' >notes.md
 expect "gh pr create --title 'Add it' --body 'Use a tool, such as Vale.'"
 expect "gh issue comment 1 -F notes.md"
+# A command that only sets a variable holds no text to check, and the hook
+# passes it, gh or not.
+expect 'today=$(date); echo "$today"'
+expect 'body=$(cat notes.md); gh pr list'
 expect 'gh issue comment 1 --body "$text"' "The hook can't read the body of gh issue comment, as the command makes it when it runs"
 expect "gh issue comment 1 --body-file missing.md" "missing.md isn't there before the command runs"
 [ -z "$(find . -maxdepth 1 -name '.claude-code.*')" ] || { echo "Failed: the hook should delete the copies of the texts."; failed=1; }
