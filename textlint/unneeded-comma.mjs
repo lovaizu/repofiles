@@ -116,7 +116,7 @@ function joinsClauses(rest) {
   return rest.some((t, i) => rest[i + 1]?.surface_form === "、" && ((isPredicate(t) && /^連用/.test(t.conjugated_form)) || (t.pos === "助詞" && t.pos_detail_1 === "接続助詞")));
 }
 
-const opens =/[「『（(［\[【〈《]/g;
+const opens = /[「『（(［\[【〈《]/g;
 const closes = /[」』）)］\]】〉》]/g;
 const bare = (s) => s.replace(/[\s。．.!?！？]/g, "");
 
