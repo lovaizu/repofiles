@@ -18,11 +18,13 @@ if ! texts="$(jq -r '.tool_input.command // empty' <<<"$input" | shfmt --to-json
 fi
 # The jobs that check the texts: those that the repository names in args of
 # the job claude-code in its lefthook-repo.yml, as only it knows the
-# languages of its Issues and pull requests, or else each job that is on.
+# languages of its Issues and pull requests, or else each job that is on but
+# links. GitHub reads a relative link of a text from the page of the text,
+# not from the copy that the hook checks.
 if [ "$#" -gt 0 ]; then
   jobs=("$@")
 else
-  mapfile -t jobs < <(lefthook dump --format json | jq -r '.["pre-commit"].jobs // [] | .[] | select(.script == "prose.sh" and .skip != true) | .name')
+  mapfile -t jobs < <(lefthook dump --format json | jq -r '.["pre-commit"].jobs // [] | .[] | select(.script == "prose.sh" and .skip != true and .name != "links") | .name')
 fi
 cwd="$(jq -r '.cwd // empty' <<<"$input")"
 # prose.sh reads the settings from the directory of a file up to the root,
