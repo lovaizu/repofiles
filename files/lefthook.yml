@@ -2,7 +2,7 @@
 # setup.sh again, as the README of lovaizu/repofiles says.
 # lefthook-repo.yml holds the settings of this repository, and setup.sh
 # doesn't change it: the files of each job, by glob and exclude, and
-# skip: true on the job of a language that this repository doesn't hold.
+# skip: true on the job of a check that this repository doesn't need.
 extends:
   - lefthook-repo.yml
 remotes:
@@ -11,4 +11,5 @@ remotes:
     configs:
       - english.yml
       - japanese.yml
+      - links.yml
       - claude-code.yml

@@ -1,11 +1,15 @@
-# The checks of this repository: the English one that it shares. This
-# repository holds no Japanese, so it doesn't extend japanese.yml. The cases
-# of tests/cases have findings on purpose.
+# The checks of this repository: the English one and the links one that it
+# shares. This repository holds no Japanese, so it doesn't extend
+# japanese.yml. The cases of tests/cases have findings on purpose.
 extends:
   - english.yml
+  - links.yml
 
 pre-commit:
   jobs:
     - name: english
+      exclude:
+        - "tests/cases/**"
+    - name: links
       exclude:
         - "tests/cases/**"

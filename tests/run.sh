@@ -1,6 +1,6 @@
 #!/bin/bash
-# Runs prose.sh on each case of tests/cases, in the language that its
-# directory names: english or japanese. The name of a case says the result
+# Runs prose.sh on each case of tests/cases, with the check that its
+# directory names: english, japanese or links. The name of a case says the result
 # that the check must give: a case named pass-* has no finding, a case named
 # show-* passes with the finding that its line "expect:" names, and a case
 # named fail-* fails with that finding. A check must fail where it should,
@@ -9,7 +9,7 @@
 set -uo pipefail
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 failed=0
-for file in "$here"/cases/english/* "$here"/cases/japanese/*; do
+for file in "$here"/cases/english/* "$here"/cases/japanese/* "$here"/cases/links/*; do
   name="${file##*/}"
   language="$(basename "$(dirname "$file")")"
   out="$(cd "$(dirname "$file")" && "$here/../prose.sh" "$language" "$name" 2>&1)"
@@ -139,6 +139,16 @@ want "ja-no-unneeded-comma at the level info" 0 "ja-no-unneeded-comma (info)"
 printf '{"rules": {"ja-no-unneeded-comma": false}}\n' >"$tmp/comma/.textlintrc.json"
 run_in "$tmp/comma" japanese fail-japanese-comma.md
 [ "$status" -eq 0 ] && [ -z "$out" ] || { echo "Failed: ja-no-unneeded-comma: false should turn off the rule, but the check exited $status with:"; echo "$out"; failed=1; }
+
+# The links check follows a link to another site, and a repository turns
+# that off with offline = true in its lychee.toml.
+mkdir -p "$tmp/links"
+printf '[A page that went away](https://github.com/lovaizu/repofiles/blob/main/no-such-file.md)\n' >"$tmp/links/away.md"
+run_in "$tmp/links" links away.md
+want "a link to another site" 1 "Line 1, dead-link (error): https://github.com/lovaizu/repofiles/blob/main/no-such-file.md"
+printf 'offline = true\n' >"$tmp/links/lychee.toml"
+run_in "$tmp/links" links away.md
+[ "$status" -eq 0 ] && [ -z "$out" ] || { echo "Failed: offline = true should leave out the links to other sites, but the check exited $status with:"; echo "$out"; failed=1; }
 
 # Each package that the checks load is in textlint/package.json, which
 # pins it.

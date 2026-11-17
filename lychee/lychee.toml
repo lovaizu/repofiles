@@ -1,0 +1,9 @@
+# The defaults of the links check. lib/lib.sh gives lychee this file first,
+# and the lychee.toml of the repository after it, which lychee lays over
+# this one, such as offline = true to leave out the links to other sites.
+
+# An anchor, as in #steps or file.md#steps, leads to a heading of the file.
+include_fragments = "anchor-only"
+
+# A site that answers 429 holds the page, and only asks for fewer requests.
+accept = ["100..=103", "200..=299", "429"]

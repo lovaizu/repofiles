@@ -46,12 +46,15 @@ cd "$dir/consumer" || exit 1
 cp "$here/tests/cases/english/fail-english.md" README.md
 cp "$here/LICENSE" .
 printf '# Use a tool, e.g. Vale.\nprint(1)\n' >tool.py
+printf 'Read [the steps](setup.md).\n' >steps.md
 # The repository turns off Japanese. The checks leave out the files that
 # setup.sh put, LICENSE, a file with no extension, and tool.py, as they read
 # only Markdown unless the repository names other files.
 printf 'pre-commit:\n  jobs:\n    - name: japanese\n      skip: true\n' >lefthook-repo.yml
 git add -A
-expect 1 "Vale on (LICENSE|tool.py|lefthook|.github|.claude)" "japanese (skip)" "Vale on README.md:" "Google.Latin (error)"
+expect 1 "Vale on (LICENSE|tool.py|lefthook|.github|.claude)" "japanese (skip)" "Vale on README.md:" "Google.Latin (error)" "lychee on steps.md:" "setup.md: File not found"
+git rm -q --cached steps.md
+rm steps.md
 # A .vale.ini of the repository changes the checks.
 printf '[*]\nGoogle.Latin = suggestion\n' >.vale.ini
 expect 0 "" "Google.Latin (suggestion)"
@@ -64,9 +67,9 @@ printf '[*]\nGoogle.Latin = suggestion\n' >.vale.ini
 git add .vale.ini
 expect 0 ""
 [ -n "$(git log --oneline 2>/dev/null)" ] || { echo "Failed: a clean commit should go in."; failed=1; }
-# With both languages off, ci.sh fails, as it would check nothing.
+# With each check off, ci.sh fails, as it would check nothing.
 run=(bash "$here/ci.sh")
-printf 'pre-commit:\n  jobs:\n    - name: english\n      skip: true\n    - name: japanese\n      skip: true\n' >lefthook-repo.yml
+printf 'pre-commit:\n  jobs:\n    - name: english\n      skip: true\n    - name: japanese\n      skip: true\n    - name: links\n      skip: true\n' >lefthook-repo.yml
 expect 1 "" "has no job of lovaizu/repofiles that is on"
 [ "$failed" -eq 0 ] && echo "The consumer cases passed."
 exit "$failed"
