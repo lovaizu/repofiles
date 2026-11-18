@@ -140,15 +140,14 @@ printf '{"rules": {"ja-no-unneeded-comma": false}}\n' >"$tmp/comma/.textlintrc.j
 run_in "$tmp/comma" japanese fail-japanese-comma.md
 [ "$status" -eq 0 ] && [ -z "$out" ] || { echo "Failed: ja-no-unneeded-comma: false should turn off the rule, but the check exited $status with:"; echo "$out"; failed=1; }
 
-# The links check follows a link to another site, and a repository turns
-# that off with offline = true in its lychee.toml.
+# The links check reads only the links within the repository, even where
+# the lychee.toml of the repository asks for the others.
 mkdir -p "$tmp/links"
-printf '[A page that went away](https://github.com/lovaizu/repofiles/blob/main/no-such-file.md)\n' >"$tmp/links/away.md"
+printf '[A site that is down](http://127.0.0.1:9/away)\n[A file that moved](moved.md)\n' >"$tmp/links/away.md"
+printf 'offline = false\n' >"$tmp/links/lychee.toml"
 run_in "$tmp/links" links away.md
-want "a link to another site" 1 "Line 1, dead-link (error): https://github.com/lovaizu/repofiles/blob/main/no-such-file.md"
-printf 'offline = true\n' >"$tmp/links/lychee.toml"
-run_in "$tmp/links" links away.md
-[ "$status" -eq 0 ] && [ -z "$out" ] || { echo "Failed: offline = true should leave out the links to other sites, but the check exited $status with:"; echo "$out"; failed=1; }
+want "a link within the repository" 1 "Line 2, dead-link (error): moved.md: File not found"
+grep -qF "127.0.0.1" <<<"$out" && { echo "Failed: the links check should leave out the links to other sites, but printed:"; echo "$out"; failed=1; }
 
 # Each package that the checks load is in textlint/package.json, which
 # pins it.

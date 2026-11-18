@@ -4,8 +4,7 @@
 # The job reads the staged Markdown files, as the checks of the languages
 # do. A repository gives the job other files with glob and exclude of a job
 # of the same name in its lefthook-repo.yml, or turns it off there with
-# skip: true. Its lychee.toml changes what lychee checks, such as
-# offline = true to leave out the links to other sites.
+# skip: true. Its lychee.toml changes what lychee checks.
 pre-commit:
   jobs:
     - name: links

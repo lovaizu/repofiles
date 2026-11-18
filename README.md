@@ -33,7 +33,7 @@ pre-commit:
 
 The Claude Code hook checks its texts with each check that's on but `links`, or with only those that `args` of its job names, such as `claude-code: {jobs: [{name: claude-code, args: english}]}`.
 
-A `.vale.ini` or `.textlintrc` in the repository changes the rules of the check of its directory and below. The docs of [Vale](https://vale.sh/docs/vale-ini) and [textlint](https://textlint.org/docs/configuring) say how to write each file. A `lychee.toml` at the root of the repository changes what the `links` check checks, as the [lychee docs](https://lychee.cli.rs/guides/config/) say, such as `offline = true` to leave out the links to other sites. The checks lay the settings of the file over their own, so write only what you change.
+A `.vale.ini` or `.textlintrc` in the repository changes the rules of the check of its directory and below. The docs of [Vale](https://vale.sh/docs/vale-ini) and [textlint](https://textlint.org/docs/configuring) say how to write each file. A `lychee.toml` at the root of the repository changes what the `links` check checks, as the [lychee docs](https://lychee.cli.rs/guides/config/) say, such as `exclude` to leave out a link that only a reader with access can follow. The checks lay the settings of the file over their own, so write only what you change.
 
 ## What the checks check
 
@@ -48,7 +48,7 @@ A finding at the level warning or error stops the text, and a lower one only sho
   - `ja-no-unneeded-comma` of [`textlint/unneeded-comma.mjs`](textlint/unneeded-comma.mjs), which finds a comma `、` that a short sentence doesn't need
   - [`textlint-rule-prh`](https://github.com/textlint-rule/textlint-rule-prh), when the repository names its dictionary
   - The filters [`textlint-filter-rule-allowlist`](https://github.com/textlint/textlint-filter-rule-allowlist) and [`textlint-filter-rule-comments`](https://github.com/textlint/textlint-filter-rule-comments)
-- `links` finds a link that leads nowhere, by [lychee](https://lychee.cli.rs): a path to a file that the repository doesn't hold, an anchor that no heading of the file gives, and a page of another site that doesn't answer. A site can fail for a cause outside the repository, so a repository that wants the commit to depend on the repository alone sets `offline = true`.
+- `links` finds a link that leads nowhere, by [lychee](https://lychee.cli.rs): a path to a file that the repository doesn't hold, and an anchor that no heading of the file gives. Before a commit and on a push, it reads only the links within the repository, so that a site outside the repository never stops a commit, and the result depends on the repository alone.
 
 The Claude Code hook gives the title, body and comment of each `gh issue` and `gh pr` command to the checks of the languages before the command runs, and stops the command on a finding that stops the text.
 

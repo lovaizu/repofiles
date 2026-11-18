@@ -142,6 +142,8 @@ lychee_reads='\.(md|markdown|html|htm|txt)$'
 # lychee reads an absolute path, such as /docs/setup.md, from the root of
 # the repository. It exits 2 where it found a link that leads nowhere, and
 # a link that timed out leads nowhere too, for the reader.
+# It checks only the links within the repository, for the reason that the
+# README gives, and --offline wins over the lychee.toml of the repository.
 check_links() {
   local file texts=() configs=(--config "$root/lychee/lychee.toml") status
   for file in "$@"; do
@@ -150,7 +152,7 @@ check_links() {
   done
   [ "${#texts[@]}" -gt 0 ] || return 0
   [ ! -f lychee.toml ] || configs+=(--config lychee.toml)
-  lychee "${configs[@]}" --root-dir "$PWD" --no-progress --format json --output "$work/lychee.json" -- "${texts[@]}" >"$work/out" 2>"$work/err"
+  lychee "${configs[@]}" --offline --root-dir "$PWD" --no-progress --format json --output "$work/lychee.json" -- "${texts[@]}" >"$work/out" 2>"$work/err"
   status=$?
   if [ "$status" -ne 0 ] && [ "$status" -ne 2 ]; then
     fail_run lychee "lychee exited $status" "${texts[@]}"
