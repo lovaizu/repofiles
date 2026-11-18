@@ -44,10 +44,22 @@ done
 if [ "${#notes[@]}" -gt 0 ]; then
   printf 'prose.sh: %s\n' "${notes[@]}" >&2
 fi
+# A daily run of daily.sh has no commit to stop, and finds only links, so
+# its report says what to do with a link.
+if [ -n "${REPOFILES_LINKS_DAILY:-}" ] && [ -n "$fails" ]; then
+  echo "These links lead nowhere:"
+  echo
+  printf '%s' "$fails"
+  cat <<'EOF'
+Fix or delete each link. A site can be down for a day, so open a link
+before you delete it. To leave out a link that only a reader with access
+can follow, such as one to a private repository, name it in exclude of the
+lychee.toml of the repository.
+EOF
 # The report says what the checks are for, before the findings and again
 # after them, so that a writer rewrites each part for its reader and
 # doesn't only swap the words of a finding. Issue #17 holds the reason.
-if [ -n "$fails$shows" ]; then
+elif [ -n "$fails$shows" ]; then
   cat <<'EOF'
 The checks found text that its reader may not understand. Each finding marks
 text to rethink, not words to swap. Find what the reader needs from the

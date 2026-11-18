@@ -148,9 +148,9 @@ printf 'offline = false\n' >"$tmp/links/lychee.toml"
 run_in "$tmp/links" links away.md
 want "a link within the repository" 1 "Line 2, dead-link (error): moved.md: File not found"
 grep -qF "127.0.0.1" <<<"$out" && { echo "Failed: the links check should leave out the links to other sites, but printed:"; echo "$out"; failed=1; }
-# For daily.sh, it reads all the links. The case asks
-# GitHub for a page, so it needs the network, and GitHub can answer a
-# runner of CI with a status other than 404.
+# For daily.sh, it reads all the links. The case asks GitHub for a page,
+# so it needs the network, and GitHub can answer a runner of CI with a
+# status other than 404.
 printf '[A page that went away](https://github.com/lovaizu/repofiles/blob/main/no-such-file.md)\n[A file that moved](moved.md)\n' >"$tmp/links/daily.md"
 out="$(cd "$tmp/links" && REPOFILES_LINKS_DAILY=1 "$here/../prose.sh" links daily.md 2>&1)"
 status=$?
