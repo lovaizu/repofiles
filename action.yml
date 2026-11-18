@@ -21,12 +21,11 @@ runs:
       env:
         NO_COLOR: "1"
       run: bash "$GITHUB_ACTION_PATH/ci.sh"
-    # lychee reads GITHUB_TOKEN, and gh reads GH_TOKEN.
+    # lychee reads GITHUB_TOKEN, for the reason that the README gives.
     - if: inputs.daily != ''
       shell: bash
       env:
         NO_COLOR: "1"
         DAILY: ${{ inputs.daily }}
         GITHUB_TOKEN: ${{ github.token }}
-        GH_TOKEN: ${{ github.token }}
       run: bash "$GITHUB_ACTION_PATH/daily.sh" "$DAILY"

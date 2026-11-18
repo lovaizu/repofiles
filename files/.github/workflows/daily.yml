@@ -12,11 +12,9 @@ on:
     - cron: "17 3 * * *"
   workflow_dispatch:
 
-# The checks read the repository, and write only the Issue of their
-# findings.
+# The checks only read the repository, so the token can change nothing.
 permissions:
   contents: read
-  issues: write
 
 jobs:
   # The links to other sites, of the files of the links check of

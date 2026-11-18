@@ -148,17 +148,14 @@ printf 'offline = false\n' >"$tmp/links/lychee.toml"
 run_in "$tmp/links" links away.md
 want "a link within the repository" 1 "Line 2, dead-link (error): moved.md: File not found"
 grep -qF "127.0.0.1" <<<"$out" && { echo "Failed: the links check should leave out the links to other sites, but printed:"; echo "$out"; failed=1; }
-# For daily.sh, it reads only the links to other sites, and adds each
-# finding to the report that REPOFILES_LINKS_REPORT names, in place of
-# failing. The case asks GitHub for a page, so it needs the network, and
-# GitHub can answer a runner of CI with a status other than 404.
+# For daily.sh, it reads only the links to other sites. The case asks
+# GitHub for a page, so it needs the network, and GitHub can answer a
+# runner of CI with a status other than 404.
 printf '[A page that went away](https://github.com/lovaizu/repofiles/blob/main/no-such-file.md)\n[A file that moved](moved.md)\n' >"$tmp/links/daily.md"
-: >"$tmp/links/report.jsonl"
-out="$(cd "$tmp/links" && REPOFILES_LINKS_REPORT="$tmp/links/report.jsonl" "$here/../prose.sh" links daily.md 2>&1)"
+out="$(cd "$tmp/links" && REPOFILES_LINKS_DAILY=1 "$here/../prose.sh" links daily.md 2>&1)"
 status=$?
-report="$(cat "$tmp/links/report.jsonl")"
-[ "$status" -eq 0 ] && [ -z "$out" ] && jq -se 'length == 1 and (.[0] | .file == "daily.md" and .line == 1 and (.message | startswith("https://github.com/lovaizu/repofiles/blob/main/no-such-file.md: ")))' <<<"$report" >/dev/null ||
-  { echo "Failed: the links check for daily.sh should report only the page that went away, but it exited $status with:"; echo "$out"; echo "and reported:"; echo "$report"; failed=1; }
+want "a link to another site" 1 "Line 1, dead-link (error): https://github.com/lovaizu/repofiles/blob/main/no-such-file.md: "
+grep -qF "moved.md" <<<"$out" && { echo "Failed: the links check for daily.sh should leave out the links within the repository, but printed:"; echo "$out"; failed=1; }
 
 # Each package that the checks load is in textlint/package.json, which
 # pins it.
