@@ -144,18 +144,18 @@ lychee_reads='\.(md|markdown|html|htm|txt)$'
 # a link that timed out leads nowhere too, for the reader.
 # It checks only the links within the repository, for the reason that the
 # README gives, and --offline wins over the lychee.toml of the repository.
-# Where daily.sh sets REPOFILES_LINKS_DAILY, it checks only the links to
-# other sites instead.
+# Where daily.sh sets REPOFILES_LINKS_DAILY, it leaves out --offline, so
+# it checks all the links, as the lychee.toml of the repository says.
 check_links() {
-  local file texts=() configs=(--config "$root/lychee/lychee.toml") links=(--offline) status
+  local file texts=() options=(--config "$root/lychee/lychee.toml") status
   for file in "$@"; do
     [[ "$file" =~ $lychee_reads ]] || continue
     is_text "$file" && texts+=("$file")
   done
   [ "${#texts[@]}" -gt 0 ] || return 0
-  [ ! -f lychee.toml ] || configs+=(--config lychee.toml)
-  [ -z "${REPOFILES_LINKS_DAILY:-}" ] || links=(--offline=false --scheme https --scheme http)
-  lychee "${configs[@]}" "${links[@]}" --root-dir "$PWD" --no-progress --format json --output "$work/lychee.json" -- "${texts[@]}" >"$work/out" 2>"$work/err"
+  [ ! -f lychee.toml ] || options+=(--config lychee.toml)
+  [ -n "${REPOFILES_LINKS_DAILY:-}" ] || options+=(--offline)
+  lychee "${options[@]}" --root-dir "$PWD" --no-progress --format json --output "$work/lychee.json" -- "${texts[@]}" >"$work/out" 2>"$work/err"
   status=$?
   if [ "$status" -ne 0 ] && [ "$status" -ne 2 ]; then
     fail_run lychee "lychee exited $status" "${texts[@]}"

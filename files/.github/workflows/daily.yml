@@ -17,9 +17,8 @@ permissions:
   contents: read
 
 jobs:
-  # The links to other sites, of the files of the links check of
-  # lefthook.yml. Each push checks the links within the repository, which
-  # can't change without one.
+  # All the links of the files of the links check of lefthook.yml, as a
+  # site outside the repository can stop answering on any day.
   links:
     runs-on: ubuntu-24.04
     steps:

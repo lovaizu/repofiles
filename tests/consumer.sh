@@ -67,15 +67,15 @@ printf '[*]\nGoogle.Latin = suggestion\n' >.vale.ini
 git add .vale.ini
 expect 0 ""
 [ -n "$(git log --oneline 2>/dev/null)" ] || { echo "Failed: a clean commit should go in."; failed=1; }
-# The daily check reads the links to other sites of the files of the links
-# job, and fails on a finding. Nothing listens on port 9 of 127.0.0.1, so a
-# link there leads nowhere with no network.
+# The daily check reads all the links of the files of the links job, and
+# fails on a finding. Nothing listens on port 9 of 127.0.0.1, so a link
+# there leads nowhere with no network.
 mkdir -p vendor
 printf 'pre-commit:\n  jobs:\n    - name: japanese\n      skip: true\n    - name: links\n      exclude:\n        - "vendor/**"\n' >lefthook-repo.yml
 printf '# Links\n\n[A site that is down](http://127.0.0.1:9/away), and [a file that moved](moved.md).\n' | tee away.md >vendor/away.md
 git add -A
 run=(bash "$here/daily.sh" links)
-expect 1 "vendor|moved.md" "lychee on away.md:" "Line 3, dead-link (error): http://127.0.0.1:9/away: "
+expect 1 "vendor" "lychee on away.md:" "Line 3, dead-link (error): http://127.0.0.1:9/away: " "Line 3, dead-link (error): moved.md: File not found"
 # With no finding, it passes.
 printf '# Links\n' >away.md
 git add away.md
