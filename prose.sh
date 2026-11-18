@@ -1,8 +1,9 @@
 #!/bin/bash
-# Checks the prose of each file given, in the language that the first
-# argument names: english, by Vale with the Google developer documentation
-# style, or japanese, by textlint. The repository chooses the files of each
-# language, with the glob of each job in its lefthook-repo.yml.
+# Checks each file given with the check that the first argument names:
+# english, by Vale with the Google developer documentation style, japanese,
+# by textlint, or links, by lychee, which finds a link that leads nowhere.
+# The repository chooses the files of each check, with the glob of each job
+# in its lefthook-repo.yml.
 # A finding at the level warning or error fails, and a finding at a lower
 # level shows in the report. A check that can't run fails too, as it would
 # let a finding through.
@@ -18,8 +19,9 @@ language="${1:-}"
 case "$language" in
   english) check=check_english ;;
   japanese) check=check_japanese ;;
+  links) check=check_links ;;
   *)
-    echo "prose.sh: the first argument must be english or japanese, not '${1:-}'." >&2
+    echo "prose.sh: the first argument must be english, japanese or links, not '${1:-}'." >&2
     exit 1
     ;;
 esac
@@ -42,10 +44,22 @@ done
 if [ "${#notes[@]}" -gt 0 ]; then
   printf 'prose.sh: %s\n' "${notes[@]}" >&2
 fi
+# A daily run of daily.sh has no commit to stop, and finds only links, so
+# its report says what to do with a link.
+if [ -n "${REPOFILES_LINKS_DAILY:-}" ] && [ -n "$fails" ]; then
+  echo "These links lead nowhere:"
+  echo
+  printf '%s' "$fails"
+  cat <<'EOF'
+Fix or delete each link. A site can be down for a day, so open a link
+before you delete it. To leave out a link that only a reader with access
+can follow, such as one to a private repository, name it in exclude of the
+lychee.toml of the repository.
+EOF
 # The report says what the checks are for, before the findings and again
 # after them, so that a writer rewrites each part for its reader and
 # doesn't only swap the words of a finding. Issue #17 holds the reason.
-if [ -n "$fails$shows" ]; then
+elif [ -n "$fails$shows" ]; then
   cat <<'EOF'
 The checks found text that its reader may not understand. Each finding marks
 text to rethink, not words to swap. Find what the reader needs from the

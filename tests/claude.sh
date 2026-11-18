@@ -61,6 +61,9 @@ expect 'today=$(date); echo "$today"'
 expect 'body=$(cat notes.md); gh pr list'
 expect 'gh issue comment 1 --body "$text"' "The hook can't read the body of gh issue comment, as the command makes it when it runs"
 expect "gh issue comment 1 --body-file missing.md" "missing.md isn't there before the command runs"
+# GitHub reads a relative link of a text from the page of the text, so the
+# hook doesn't give the texts to the links check.
+expect "gh pr create --title 'Add it' --body 'Read [the steps](setup.md).'"
 [ -z "$(find . -maxdepth 1 -name '.claude-code.*')" ] || { echo "Failed: the hook should delete the copies of the texts."; failed=1; }
 
 # A repository names the jobs that check the texts, and the hook runs only

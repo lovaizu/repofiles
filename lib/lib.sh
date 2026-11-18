@@ -1,8 +1,8 @@
 # The checks of prose.sh. Vale checks the English with the Google developer
-# documentation style, and textlint checks the Japanese. Each check adds its
-# findings to $fails or $shows, by the level that the tool gives them, and a
-# note for each file that it didn't check to $notes. Run install.sh first, as
-# prose.sh does.
+# documentation style, textlint checks the Japanese, and lychee checks the
+# links. Each check adds its findings to $fails or $shows, by the level that
+# the tool gives them, and a note for each file that it didn't check to
+# $notes. Run install.sh first, as prose.sh does.
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 . "$root/lib/paths.sh"
@@ -129,5 +129,39 @@ check_japanese() {
     fail_run textlint "Node exited $status" "${texts[@]}"
   elif ! add_findings textlint "$(cat "$work/textlint.json")"; then
     fail_run textlint "jq couldn't read its report" "${texts[@]}"
+  fi
+}
+
+# The files whose links lychee reads apart from their code: Markdown, HTML
+# and plain text. lychee reads any other file as plain text, so it would
+# take a URL in its code for a link.
+lychee_reads='\.(md|markdown|html|htm|txt)$'
+
+# Runs lychee once on each file given that it reads, with the settings of
+# lychee/lychee.toml, and the lychee.toml of the repository over them.
+# lychee reads an absolute path, such as /docs/setup.md, from the root of
+# the repository. It exits 2 where it found a link that leads nowhere, and
+# a link that timed out leads nowhere too, for the reader.
+# It checks only the links within the repository, for the reason that the
+# README gives, and --offline wins over the lychee.toml of the repository.
+# Where daily.sh sets REPOFILES_LINKS_DAILY, it leaves out --offline, so
+# it checks all the links, as the lychee.toml of the repository says.
+check_links() {
+  local file texts=() options=(--config "$root/lychee/lychee.toml") status
+  for file in "$@"; do
+    [[ "$file" =~ $lychee_reads ]] || continue
+    is_text "$file" && texts+=("$file")
+  done
+  [ "${#texts[@]}" -gt 0 ] || return 0
+  [ ! -f lychee.toml ] || options+=(--config lychee.toml)
+  [ -n "${REPOFILES_LINKS_DAILY:-}" ] || options+=(--offline)
+  lychee "${options[@]}" --root-dir "$PWD" --no-progress --format json --output "$work/lychee.json" -- "${texts[@]}" >"$work/out" 2>"$work/err"
+  status=$?
+  if [ "$status" -ne 0 ] && [ "$status" -ne 2 ]; then
+    fail_run lychee "lychee exited $status" "${texts[@]}"
+  elif ! add_findings lychee "$(jq --arg dir "file://$PWD/" '{files: [(.error_map, .timeout_map) // {} | to_entries[]
+      | {file: .key, findings: [.value[] | {line: (.span.line // 1), check: "dead-link", level: "error",
+          message: "\(.url | ltrimstr($dir)): \(.status.text)"}]}]}' "$work/lychee.json" 2>"$work/err")"; then
+    fail_run lychee "jq couldn't read its report" "${texts[@]}"
   fi
 }

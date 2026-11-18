@@ -1,15 +1,15 @@
 #!/bin/bash
-# Runs prose.sh on each case of tests/cases, in the language that its
-# directory names: english or japanese. The name of a case says the result
-# that the check must give: a case named pass-* has no finding, a case named
-# show-* passes with the finding that its line "expect:" names, and a case
-# named fail-* fails with that finding. A check must fail where it should,
-# or it passes everything. The runs after the cases check each thing that
-# the checks must do, with one case each.
+# Runs prose.sh on each case of tests/cases, with the check that its
+# directory names: english, japanese or links. The name of a case says the
+# result that the check must give: a case named pass-* has no finding, a
+# case named show-* passes with the finding that its line "expect:" names,
+# and a case named fail-* fails with that finding. A check must fail where
+# it should, or it passes everything. The runs after the cases check each
+# thing that the checks must do, with one case each.
 set -uo pipefail
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 failed=0
-for file in "$here"/cases/english/* "$here"/cases/japanese/*; do
+for file in "$here"/cases/english/* "$here"/cases/japanese/* "$here"/cases/links/*; do
   name="${file##*/}"
   language="$(basename "$(dirname "$file")")"
   out="$(cd "$(dirname "$file")" && "$here/../prose.sh" "$language" "$name" 2>&1)"
@@ -139,6 +139,22 @@ want "ja-no-unneeded-comma at the level info" 0 "ja-no-unneeded-comma (info)"
 printf '{"rules": {"ja-no-unneeded-comma": false}}\n' >"$tmp/comma/.textlintrc.json"
 run_in "$tmp/comma" japanese fail-japanese-comma.md
 [ "$status" -eq 0 ] && [ -z "$out" ] || { echo "Failed: ja-no-unneeded-comma: false should turn off the rule, but the check exited $status with:"; echo "$out"; failed=1; }
+
+# The links check reads only the links within the repository, even where
+# the lychee.toml of the repository asks for the others.
+mkdir -p "$tmp/links"
+printf '[A site that is down](http://127.0.0.1:9/away)\n[A file that moved](moved.md)\n' >"$tmp/links/away.md"
+printf 'offline = false\n' >"$tmp/links/lychee.toml"
+run_in "$tmp/links" links away.md
+want "a link within the repository" 1 "Line 2, dead-link (error): moved.md: File not found"
+grep -qF "127.0.0.1" <<<"$out" && { echo "Failed: the links check should leave out the links to other sites, but printed:"; echo "$out"; failed=1; }
+# For daily.sh, it reads all the links. The case asks GitHub for a page,
+# so it needs the network, and GitHub can answer a runner of CI with a
+# status other than 404.
+printf '[A page that went away](https://github.com/lovaizu/repofiles/blob/main/no-such-file.md)\n[A file that moved](moved.md)\n' >"$tmp/links/daily.md"
+out="$(cd "$tmp/links" && REPOFILES_LINKS_DAILY=1 "$here/../prose.sh" links daily.md 2>&1)"
+status=$?
+want "all the links for daily.sh" 1 "Line 1, dead-link (error): https://github.com/lovaizu/repofiles/blob/main/no-such-file.md: " "Line 2, dead-link (error): moved.md: File not found"
 
 # Each package that the checks load is in textlint/package.json, which
 # pins it.
