@@ -43,6 +43,7 @@ A finding at the level warning or error stops the text, and a lower one only sho
 - `japanese` checks Japanese by [textlint](https://textlint.org), with these rules:
   - [`textlint-rule-preset-ja-technical-writing`](https://github.com/textlint-ja/textlint-rule-preset-ja-technical-writing)
   - [`@textlint-ja/textlint-rule-preset-ai-writing`](https://github.com/textlint-ja/textlint-rule-preset-ai-writing)
+  - [`@textlint-ja/textlint-rule-no-synonyms`](https://github.com/textlint-ja/textlint-rule-no-synonyms), which finds two spellings of the same word in one text, such as サーバー and サーバ, by the [synonym dictionary of Sudachi](https://github.com/WorksApplications/SudachiDict/blob/develop/docs/synonyms.md)
   - [`textlint-rule-ja-hiragana-keishikimeishi`](https://github.com/lostandfound/textlint-rule-ja-hiragana-keishikimeishi), [`textlint-rule-ja-hiragana-hojodoushi`](https://github.com/lostandfound/textlint-rule-ja-hiragana-hojodoushi) and [`textlint-rule-ja-hiragana-fukushi`](https://github.com/lostandfound/textlint-rule-ja-hiragana-fukushi)
   - [`textlint-rule-ja-space-between-half-and-full-width`](https://github.com/textlint-ja/textlint-rule-ja-space-between-half-and-full-width), with `space: never`
   - `ja-no-unneeded-comma` of [`textlint/unneeded-comma.mjs`](textlint/unneeded-comma.mjs), which finds a comma `、` that a short sentence doesn't need
