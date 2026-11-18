@@ -67,6 +67,55 @@ printf '[*]\nGoogle.Latin = suggestion\n' >.vale.ini
 git add .vale.ini
 expect 0 ""
 [ -n "$(git log --oneline 2>/dev/null)" ] || { echo "Failed: a clean commit should go in."; failed=1; }
+# The daily check reads the links to other sites of the files of the links
+# job, and lists them in an Issue by gh, which a stub stands for: it logs
+# each call with the body that it gets, and answers the list of the open
+# Issues with $dir/issues.json. Nothing listens on port 9 of 127.0.0.1, so
+# a link there leads nowhere with no network.
+mkdir -p "$dir/bin" vendor
+cat >"$dir/bin/gh" <<STUB
+#!/bin/bash
+echo "gh \$*" >>"$dir/gh.log"
+case "\$1 \$2" in
+  "issue list") cat "$dir/issues.json" ;;
+  *) for arg; do [ "\$prev" != --body-file ] || cat "\$arg" >>"$dir/gh.log"; prev="\$arg"; done ;;
+esac
+STUB
+chmod +x "$dir/bin/gh"
+export GITHUB_SERVER_URL=https://github.com GITHUB_REPOSITORY=lovaizu/consumer GITHUB_SHA=0123456789abcdef
+printf 'pre-commit:\n  jobs:\n    - name: japanese\n      skip: true\n    - name: links\n      exclude:\n        - "vendor/**"\n' >lefthook-repo.yml
+printf '# Links\n\n[A site that is down](http://127.0.0.1:9/away), and [a file that moved](moved.md).\n' | tee away.md >vendor/away.md
+git add -A
+run=(env PATH="$dir/bin:$PATH" bash "$here/daily.sh" links)
+title="Fix the links to other sites that lead nowhere"
+# Fails the test unless the log of the stub holds each text after $1, and
+# no line that matches the extended regular expression $1, if any. Then
+# empties the log.
+logged() {
+  local left="$1" want
+  shift
+  touch "$dir/gh.log"
+  for want in "$@"; do
+    grep -qF -- "$want" "$dir/gh.log" || { echo "Failed: gh should get $want, but got:"; cat "$dir/gh.log"; failed=1; }
+  done
+  [ -z "$left" ] || ! grep -qE -- "$left" "$dir/gh.log" || { echo "Failed: gh shouldn't get $left, but got:"; cat "$dir/gh.log"; failed=1; }
+  rm "$dir/gh.log"
+}
+printf '[]\n' >"$dir/issues.json"
+expect 0 ""
+logged "vendor|moved.md" "gh issue create --title $title --body-file" "- [\`away.md\`, line 3](https://github.com/lovaizu/consumer/blob/0123456789abcdef/away.md?plain=1#L3): http://127.0.0.1:9/away: Network error"
+# It updates the open Issue that it opened before, and opens no other.
+printf '[{"number": 3, "title": "Another Issue"}, {"number": 7, "title": "%s"}]\n' "$title" >"$dir/issues.json"
+expect 0 ""
+logged "issue create" "gh issue edit 7 --body-file" "http://127.0.0.1:9/away"
+# With no finding, it leaves the Issues as they are.
+printf '# Links\n' >away.md
+git add away.md
+expect 0 ""
+logged "issue"
+# With the links job off, it checks nothing.
+printf 'pre-commit:\n  jobs:\n    - name: links\n      skip: true\n' >lefthook-repo.yml
+expect 0 "" "daily.sh checks nothing"
 # With each check off, ci.sh fails, as it would check nothing.
 run=(bash "$here/ci.sh")
 printf 'pre-commit:\n  jobs:\n    - name: english\n      skip: true\n    - name: japanese\n      skip: true\n    - name: links\n      skip: true\n' >lefthook-repo.yml

@@ -148,6 +148,16 @@ printf 'offline = false\n' >"$tmp/links/lychee.toml"
 run_in "$tmp/links" links away.md
 want "a link within the repository" 1 "Line 2, dead-link (error): moved.md: File not found"
 grep -qF "127.0.0.1" <<<"$out" && { echo "Failed: the links check should leave out the links to other sites, but printed:"; echo "$out"; failed=1; }
+# For daily.sh, it reads only the links to other sites, and adds each
+# finding to the report that REPOFILES_LINKS_REPORT names, in place of
+# failing. The case asks GitHub for a page, so it needs the network.
+printf '[A page that went away](https://github.com/lovaizu/repofiles/blob/main/no-such-file.md)\n[A file that moved](moved.md)\n' >"$tmp/links/daily.md"
+: >"$tmp/links/report.jsonl"
+out="$(cd "$tmp/links" && REPOFILES_LINKS_REPORT="$tmp/links/report.jsonl" "$here/../prose.sh" links daily.md 2>&1)"
+status=$?
+report="$(cat "$tmp/links/report.jsonl")"
+[ "$status" -eq 0 ] && [ -z "$out" ] && [ "$report" = '{"file":"daily.md","line":1,"message":"https://github.com/lovaizu/repofiles/blob/main/no-such-file.md: Rejected status code: 404 Not Found"}' ] ||
+  { echo "Failed: the links check for daily.sh should report only the page that went away, but it exited $status with:"; echo "$out"; echo "and reported:"; echo "$report"; failed=1; }
 
 # Each package that the checks load is in textlint/package.json, which
 # pins it.

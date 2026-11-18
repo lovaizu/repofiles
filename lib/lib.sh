@@ -144,21 +144,31 @@ lychee_reads='\.(md|markdown|html|htm|txt)$'
 # a link that timed out leads nowhere too, for the reader.
 # It checks only the links within the repository, for the reason that the
 # README gives, and --offline wins over the lychee.toml of the repository.
+# Where daily.sh names a file in REPOFILES_LINKS_REPORT, it checks only the
+# links to other sites instead, and adds each finding to that file, one
+# JSON object a line, in place of the report: daily.sh reports them in an
+# Issue, and fails only where a check can't run.
 check_links() {
-  local file texts=() configs=(--config "$root/lychee/lychee.toml") status
+  local file texts=() configs=(--config "$root/lychee/lychee.toml") links=(--offline) status found
   for file in "$@"; do
     [[ "$file" =~ $lychee_reads ]] || continue
     is_text "$file" && texts+=("$file")
   done
   [ "${#texts[@]}" -gt 0 ] || return 0
   [ ! -f lychee.toml ] || configs+=(--config lychee.toml)
-  lychee "${configs[@]}" --offline --root-dir "$PWD" --no-progress --format json --output "$work/lychee.json" -- "${texts[@]}" >"$work/out" 2>"$work/err"
+  [ -z "${REPOFILES_LINKS_REPORT:-}" ] || links=(--offline=false --scheme https --scheme http)
+  lychee "${configs[@]}" "${links[@]}" --root-dir "$PWD" --no-progress --format json --output "$work/lychee.json" -- "${texts[@]}" >"$work/out" 2>"$work/err"
   status=$?
   if [ "$status" -ne 0 ] && [ "$status" -ne 2 ]; then
     fail_run lychee "lychee exited $status" "${texts[@]}"
-  elif ! add_findings lychee "$(jq --arg dir "file://$PWD/" '{files: [(.error_map, .timeout_map) // {} | to_entries[]
+  elif ! found="$(jq --arg dir "file://$PWD/" '{files: [(.error_map, .timeout_map) // {} | to_entries[]
       | {file: .key, findings: [.value[] | {line: (.span.line // 1), check: "dead-link", level: "error",
           message: "\(.url | ltrimstr($dir)): \(.status.text)"}]}]}' "$work/lychee.json" 2>"$work/err")"; then
+    fail_run lychee "jq couldn't read its report" "${texts[@]}"
+  elif [ -n "${REPOFILES_LINKS_REPORT:-}" ]; then
+    jq -c '.files[] | .file as $file | .findings[] | {file: $file, line, message}' <<<"$found" >>"$REPOFILES_LINKS_REPORT" 2>"$work/err" ||
+      fail_run lychee "jq couldn't write its findings to $REPOFILES_LINKS_REPORT" "${texts[@]}"
+  elif ! add_findings lychee "$found"; then
     fail_run lychee "jq couldn't read its report" "${texts[@]}"
   fi
 }

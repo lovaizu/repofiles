@@ -1,8 +1,12 @@
 name: lovaizu repofiles
-description: Runs on every file the pre-commit checks that the lefthook.yml of the repository names.
+description: Runs on every file the pre-commit checks that the lefthook.yml of the repository names, or the daily check that the input daily names.
 # An action, not a reusable workflow, as only an action knows the commit of
 # this repository that it runs from: github.action_path. Its mise.toml is
 # the one that installs the tools.
+inputs:
+  daily:
+    description: The daily check to run in place of the pre-commit checks, links, as daily.sh says.
+    default: ""
 runs:
   using: composite
   steps:
@@ -12,7 +16,17 @@ runs:
         working_directory: ${{ github.action_path }}
       env:
         MISE_TRUSTED_CONFIG_PATHS: ${{ github.action_path }}/mise.toml
-    - shell: bash
+    - if: inputs.daily == ''
+      shell: bash
       env:
         NO_COLOR: "1"
       run: bash "$GITHUB_ACTION_PATH/ci.sh"
+    # lychee reads GITHUB_TOKEN, and gh reads GH_TOKEN.
+    - if: inputs.daily != ''
+      shell: bash
+      env:
+        NO_COLOR: "1"
+        DAILY: ${{ inputs.daily }}
+        GITHUB_TOKEN: ${{ github.token }}
+        GH_TOKEN: ${{ github.token }}
+      run: bash "$GITHUB_ACTION_PATH/daily.sh" "$DAILY"
