@@ -107,6 +107,15 @@ function sameWord(head, rest) {
   return (a.basic_form !== "*" && a.basic_form === b.basic_form) || (stem(a) !== undefined && stem(a) === stem(b));
 }
 
+// Whether rest $rest joins clauses with a comma, as in 曲を探し、流れを評価し、
+// プランを作る: a comma follows a predicate in its 連用形 or a 接続助詞. A
+// head with no topic before such a rest, as in テーマを伝えると, could modify
+// the first clause alone, and the comma tells that it modifies them all. A
+// topic, as in 書いた文書は, modifies them all with no comma.
+function joinsClauses(rest) {
+  return rest.some((t, i) => rest[i + 1]?.surface_form === "、" && ((isPredicate(t) && /^連用/.test(t.conjugated_form)) || (t.pos === "助詞" && t.pos_detail_1 === "接続助詞")));
+}
+
 const opens = /[「『（(［\[【〈《]/g;
 const closes = /[」』）)］\]】〉》]/g;
 const bare = (s) => s.replace(/[\s。．.!?！？]/g, "");
@@ -126,7 +135,9 @@ export function firstComma(text, tokens) {
   const head = words.slice(0, at);
   const rest = words.slice(at + 1);
   if (head.length === 0 || rest.length === 0) return fact("edge");
-  if (text.slice(comma + 1).includes("、")) return fact("comma");
+  // A comma after the first one, such as one between the items of a list in
+  // the rest, as in 種類を、何を定めるか、何を検証するかで, doesn't change what
+  // the clause at the head modifies.
   // A comma inside brackets, such as 「設定は、」, isn't one of the sentence.
   const before = text.slice(0, comma);
   if ((before.match(opens) || []).length !== (before.match(closes) || []).length) return fact("bracket");
@@ -139,6 +150,8 @@ export function firstComma(text, tokens) {
   const isTopic = (t) => t.pos === "助詞" && t.pos_detail_1 === "係助詞" && t.surface_form === "は";
   if (head.some(isTopic) && last.pos_detail_1 !== "接続助詞" && rest.some(isTopic)) return fact("parallel");
   if (topic && /^[てで]$/.test(last.surface_form) && last.pos_detail_1 === "接続助詞" && rest.some(isSubject)) return fact("clauses");
+  const hasTopic = head.some((t) => t.pos === "助詞" && t.pos_detail_1 === "係助詞" && /^[はも]$/.test(t.surface_form));
+  if (!hasTopic && joinsClauses(rest)) return fact("scope");
   if (sameWord(head, rest)) return fact("repeat");
   if (eitherPredicate(rest)) return fact("either");
   return fact(null);
