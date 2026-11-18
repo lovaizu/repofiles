@@ -1,8 +1,8 @@
 # The checks of prose.sh. Vale checks the English with the Google developer
-# documentation style, and textlint checks the Japanese. Each check adds its
-# findings to $fails or $shows, by the level that the tool gives them, and a
-# note for each file that it didn't check to $notes. Run install.sh first, as
-# prose.sh does.
+# documentation style, textlint checks the Japanese, and lychee checks the
+# links. Each check adds its findings to $fails or $shows, by the level that
+# the tool gives them, and a note for each file that it didn't check to
+# $notes. Run install.sh first, as prose.sh does.
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 . "$root/lib/paths.sh"

@@ -1,7 +1,7 @@
 #!/bin/bash
-# Runs ci.sh, as the action does, and a commit, in a new repository that
-# setup.sh sets up from a clone of this repository at a tag of its own,
-# with settings of its own in lefthook-repo.yml and .vale.ini.
+# Runs ci.sh and daily.sh, as the action does, and a commit, in a new
+# repository that setup.sh sets up from a clone of this repository at a tag
+# of its own, with settings of its own in lefthook-repo.yml and .vale.ini.
 set -uo pipefail
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 dir="$(mktemp -d)"

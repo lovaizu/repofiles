@@ -1,11 +1,11 @@
 #!/bin/bash
 # Runs prose.sh on each case of tests/cases, with the check that its
-# directory names: english, japanese or links. The name of a case says the result
-# that the check must give: a case named pass-* has no finding, a case named
-# show-* passes with the finding that its line "expect:" names, and a case
-# named fail-* fails with that finding. A check must fail where it should,
-# or it passes everything. The runs after the cases check each thing that
-# the checks must do, with one case each.
+# directory names: english, japanese or links. The name of a case says the
+# result that the check must give: a case named pass-* has no finding, a
+# case named show-* passes with the finding that its line "expect:" names,
+# and a case named fail-* fails with that finding. A check must fail where
+# it should, or it passes everything. The runs after the cases check each
+# thing that the checks must do, with one case each.
 set -uo pipefail
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 failed=0
