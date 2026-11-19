@@ -140,6 +140,13 @@ printf '{"rules": {"ja-no-unneeded-comma": false}}\n' >"$tmp/comma/.textlintrc.j
 run_in "$tmp/comma" japanese fail-japanese-comma.md
 [ "$status" -eq 0 ] && [ -z "$out" ] || { echo "Failed: ja-no-unneeded-comma: false should turn off the rule, but the check exited $status with:"; echo "$out"; failed=1; }
 
+# Each part of the case of ja-space-between-half-and-full-width gets a
+# finding of its own: the heading, the link and the table.
+run_in "$here/cases/japanese" japanese fail-japanese-spacing.md
+for line in 3 5 9; do
+  finding textlint fail-japanese-spacing.md "Line $line, ja-space-between-half-and-full-width (error)"
+done
+
 # The links check reads only the links within the repository, even where
 # the lychee.toml of the repository asks for the others.
 mkdir -p "$tmp/links"
