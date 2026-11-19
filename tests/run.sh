@@ -132,7 +132,7 @@ grep -qF "Vale on lefthook.yml" <<<"$out" && { echo "Failed: the checks should l
 mkdir -p "$tmp/comma"
 cp "$here/cases/japanese/fail-japanese-comma.md" "$tmp/comma/"
 run_in "$tmp/comma" japanese fail-japanese-comma.md
-[ "$(grep -c 'ja-no-unneeded-comma (error)' <<<"$out")" -eq 6 ] || { echo "Failed: each sentence of fail-japanese-comma.md should get ja-no-unneeded-comma (error), but got:"; echo "$out"; failed=1; }
+[ "$(grep -c 'ja-no-unneeded-comma (error)' <<<"$out")" -eq 14 ] || { echo "Failed: each sentence of fail-japanese-comma.md should get ja-no-unneeded-comma (error), but got:"; echo "$out"; failed=1; }
 printf '{"rules": {"ja-no-unneeded-comma": {"severity": "info"}}}\n' >"$tmp/comma/.textlintrc.json"
 run_in "$tmp/comma" japanese fail-japanese-comma.md
 want "ja-no-unneeded-comma at the level info" 0 "ja-no-unneeded-comma (info)"
