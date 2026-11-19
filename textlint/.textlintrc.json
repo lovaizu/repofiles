@@ -13,7 +13,8 @@
     "ja-no-unneeded-comma": true,
     "prh": false,
     "ja-space-between-half-and-full-width": {
-      "space": "never"
+      "space": "never",
+      "lintStyledNode": true
     }
   }
 }
