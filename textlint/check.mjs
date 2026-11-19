@@ -24,6 +24,10 @@ const { createLinter } = require("textlint");
 // each. textlint finds a rule only in node_modules, so the checks load
 // these themselves, with the options of the settings.
 const own = { "ja-no-unneeded-comma": "./unneeded-comma.mjs" };
+// The plugins that textlint always has, with the Markdown plugin in
+// front-matter-title.mjs, which reads the title of the front matter too.
+const frontMatterTitle = (await import(new URL("./front-matter-title.mjs", import.meta.url))).default;
+const builtIn = builtInPlugins.map((p) => (p.pluginId === "@textlint/textlint-plugin-markdown" ? { ...p, plugin: frontMatterTitle(require, p.plugin) } : p));
 
 // Loads settings $config, the $n-th, for textlint.
 async function load(config, n) {
@@ -49,7 +53,7 @@ async function load(config, n) {
   const levels = Object.fromEntries(rules.filter((rule) => typeof rule.options?.severity === "string").map((rule) => [rule.ruleId, rule.options.severity]));
   // The descriptor that loadTextlintrc of textlint builds from the same
   // settings, with the plugins that textlint always has first.
-  const descriptor = (await loadBuiltinPlugins()).shallowMerge({ rules, filterRules, plugins: [...builtInPlugins, ...plugins], configBaseDir: work });
+  const descriptor = (await loadBuiltinPlugins()).shallowMerge({ rules, filterRules, plugins: [...builtIn, ...plugins], configBaseDir: work });
   return { levels, descriptor, linter: createLinter({ descriptor }) };
 }
 
