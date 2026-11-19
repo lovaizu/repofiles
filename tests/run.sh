@@ -149,8 +149,8 @@ done
 
 # The title of the front matter gets the finding at its line, quoted or not.
 mkdir -p "$tmp/title"
-for title in "Nudge の使い方" "'Nudge の使い方'" '"Nudge の使い方"'; do
-  printf -- '---\nlayout: post\ntitle: %s\n---\n\nNudgeの設定を読みます。\n' "$title" >"$tmp/title/title.md"
+for title in "API の使い方" "'API の使い方'" '"API の使い方"'; do
+  printf -- '---\nlayout: post\ntitle: %s\n---\n\nAPIの設定を読みます。\n' "$title" >"$tmp/title/title.md"
   run_in "$tmp/title" japanese title.md
   finding textlint title.md "Line 3, ja-space-between-half-and-full-width (error)"
 done

@@ -1,7 +1,7 @@
 ---
-title: Nudge の使い方
+title: API の使い方
 ---
 
 <!-- expect: ja-space-between-half-and-full-width -->
 
-Nudgeの設定を読みます。
+APIの設定を読みます。

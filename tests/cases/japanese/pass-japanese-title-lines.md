@@ -1,6 +1,6 @@
 ---
-title: Nudge の
+title: API の
   使い方
 ---
 
-Nudgeの設定を読みます。
+APIの設定を読みます。
