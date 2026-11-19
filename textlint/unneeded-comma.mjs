@@ -163,21 +163,23 @@ export function commas(text, tokens) {
     const fact = (keep) => ({ comma, head: bare(text.slice(mark?.word_position ?? 0, comma)).length, sentence: bare(text).length, keep });
     if (depth(comma) !== 0) return facts.push(fact("bracket"));
     const head = words.slice(start, at);
+    const before = words.slice(0, at);
     const rest = words.slice(at + 1);
     const prior = previous;
     start = at + 1;
     previous = head;
     if (head.length === 0 || rest.length === 0) return facts.push(fact("edge"));
-    facts.push(fact(prior.length > 0 ? middle(head, prior, mark, rest) : judge(head, rest)));
+    facts.push(fact(prior.length > 0 ? middle(head, prior, mark, before, rest) : judge(head, before, rest)));
   });
   return facts;
 }
 
 // What makes a comma later in a sentence, after clause $head, one that the
 // sentence may need, with clause $prior before comma $mark, the comma
-// before it, and the words $rest after it, if anything. Such a comma can
-// close a list, or tell what the clause modifies, as the first one does.
-function middle(head, prior, mark, rest) {
+// before it, the words $before before it, and $rest after it, if anything.
+// Such a comma can close a list, or tell what the clause modifies, as the
+// first one does.
+function middle(head, prior, mark, before, rest) {
   if (!middleEnds(head[head.length - 1])) return "middle";
   // The comma closes a list whose items the commas before it part, as in
   // 手順、選択肢、関係を、リスト、表、図が示す and 選択と、方法を、. Without
@@ -188,17 +190,20 @@ function middle(head, prior, mark, rest) {
   // comma tells that it modifies the one at the end. A topic modifies
   // the predicate at the end with no comma.
   if (head[head.length - 1].pos_detail_1 === "格助詞" && rest.some((t, i) => i + 1 < rest.length && endsClause(t, rest[i + 1]))) return "inner";
-  return judge(head, rest);
+  return judge(head, before, rest);
 }
 
 // What makes the comma after clause $head one that the sentence may need,
-// with the words $rest after it, if anything.
-function judge(head, rest) {
+// with the words $before before the comma and $rest after it, if anything.
+function judge(head, before, rest) {
   const last = head[head.length - 1];
   if (last.pos !== "助詞" || !headEnds.has(last.pos_detail_1)) return "head";
   if (isConnective(head)) return "connective";
   if (last.pos_detail_1 === "接続助詞" && contrasts.has(last.surface_form)) return "contrast";
-  const topic = head.slice(0, -1).some(isSubject);
+  // A topic or a subject anywhere before the clause makes a clause that
+  // ends in で a predicate too, as ファイルで of
+  // マニフェストとは、手順を述べるファイルで、Makefileがその例です.
+  const topic = before.slice(0, -1).some(isSubject);
   if (topic && last.surface_form === "で") return "predicate";
   const isTopic = (t) => t.pos === "助詞" && t.pos_detail_1 === "係助詞" && t.surface_form === "は";
   if (head.some(isTopic) && last.pos_detail_1 !== "接続助詞" && rest.some(isTopic)) return "parallel";
