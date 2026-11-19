@@ -1,9 +1,10 @@
-// The textlint rule ja-no-unneeded-comma, which finds a comma (、) after the
-// clause at the head of a sentence, where the clause can modify only one
-// part of the rest of the sentence. A comma marks a break in the
-// structure of a sentence, so there it marks nothing that the reader
-// doesn't already see, as in 設定は、利用側が決めます. Issue #20 holds the
-// reason.
+// The textlint rule ja-no-unneeded-comma, which finds a comma (、) after a
+// clause that can modify only one part of the rest of the sentence: the
+// clause at the head of a sentence, or one later in it that ends in は, が,
+// を or で. A comma marks a break in the structure of a sentence, so there
+// it marks nothing that the reader doesn't already see, as in
+// 設定は、利用側が決めます and 設定ファイルを読み、ポートは、8080にします.
+// Issue #20 and issue #15 hold the reason.
 //
 // A comma stays where the word right after it could modify both a
 // predicate inside the rest and the one at its end, as 急いで of
@@ -16,7 +17,7 @@
 // request of issue #20 says: up to them, nearly each sentence that the rule
 // finds reads better without the comma.
 const defaults = {
-  // The most characters of the clause at the head, before the comma.
+  // The most characters of the clause before the comma.
   maxHead: 30,
   // The most characters of the sentence, without its spaces.
   maxSentence: 60,
@@ -120,49 +121,106 @@ const opens = /[「『（(［\[【〈《]/g;
 const closes = /[」』）)］\]】〉》]/g;
 const bare = (s) => s.replace(/[\s。．.!?！？]/g, "");
 
-// The first comma of sentence $text, with the tokens $tokens of kuromoji:
-// {comma, head, sentence, keep}, or null where the sentence has no comma.
-// comma is its index, head the number of characters before it, and
-// sentence that of the sentence, without spaces. keep names what makes the
-// comma one that the sentence may need, if anything. Only the first comma
-// of a sentence can follow the clause at its head.
-export function firstComma(text, tokens) {
+// Whether token $t is a particle after which a comma later in a sentence
+// can be one that the sentence doesn't need: は, or が, を or で of a case,
+// as in 設定ファイルを読み、ポートは、8080にします.
+const middleEnds = (t) => t.pos === "助詞" && ((t.pos_detail_1 === "係助詞" && t.surface_form === "は") || (t.pos_detail_1 === "格助詞" && /^[がをで]$/.test(t.surface_form)));
+
+// Whether clause $clause, before comma $comma, is an item of a list. It
+// ends in a particle of a list, as 選択と of 選択と、方法を, or in と, which
+// kuromoji can take for a particle of a case there. Or it is a noun phrase
+// with no predicate, as 各判定者 of 各チェック、各判定者、各代役は, but not
+// one that links the sentence to the one before it, as そのため and 翌日.
+function isItem(clause, comma) {
+  const last = clause[clause.length - 1];
+  if (last.pos === "助詞") return /並立助詞/.test(last.pos_detail_1) || (last.pos_detail_1 === "格助詞" && last.surface_form === "と");
+  return last.pos === "名詞" && !clause.some((t) => t.pos === "動詞" || t.pos === "形容詞") && !isConnective([...clause, comma]);
+}
+
+// Each comma of sentence $text, with the tokens $tokens of kuromoji:
+// {comma, head, sentence, keep}. comma is its index, head the number of
+// characters of its clause, and sentence that of the sentence, without
+// spaces. keep names what makes the comma one that the sentence may need,
+// if anything. The clause of the first comma is the head of the sentence,
+// and that of a later one is the part after the comma before it. A comma
+// after the clause, such as one between the items of a list in the rest, as
+// in 種類を、何を定めるか、何を検証するかで, doesn't change what the clause
+// modifies. A comma inside brackets, such as 「設定は、」, isn't one of the
+// sentence, and starts no clause.
+export function commas(text, tokens) {
   const words = tokens.filter((t) => t.pos !== "記号" || t.surface_form === "、");
-  const at = words.findIndex((t) => t.surface_form === "、");
-  if (at < 0) return null;
-  const comma = words[at].word_position - 1;
-  const fact = (keep) => ({ comma, head: bare(text.slice(0, comma)).length, sentence: bare(text).length, keep });
-  const head = words.slice(0, at);
-  const rest = words.slice(at + 1);
-  if (head.length === 0 || rest.length === 0) return fact("edge");
-  // A comma after the first one, such as one between the items of a list in
-  // the rest, as in 種類を、何を定めるか、何を検証するかで, doesn't change what
-  // the clause at the head modifies.
-  // A comma inside brackets, such as 「設定は、」, isn't one of the sentence.
-  const before = text.slice(0, comma);
-  if ((before.match(opens) || []).length !== (before.match(closes) || []).length) return fact("bracket");
+  const depth = (index) => {
+    const before = text.slice(0, index);
+    return (before.match(opens) || []).length - (before.match(closes) || []).length;
+  };
+  let start = 0;
+  let previous = [];
+  const facts = [];
+  words.forEach((t, at) => {
+    if (t.surface_form !== "、") return;
+    const comma = t.word_position - 1;
+    const from = start === 0 ? 0 : words[start - 1].word_position;
+    const fact = (keep) => ({ comma, head: bare(text.slice(from, comma)).length, sentence: bare(text).length, keep });
+    if (depth(comma) !== 0) return facts.push(fact("bracket"));
+    const head = words.slice(start, at);
+    const before = words.slice(0, at);
+    const rest = words.slice(at + 1);
+    const prior = previous;
+    start = at + 1;
+    previous = head;
+    if (head.length === 0 || rest.length === 0) return facts.push(fact("edge"));
+    facts.push(fact(prior.length > 0 ? middle(head, prior, before, rest) : judge(head, before, rest)));
+  });
+  return facts;
+}
+
+// What makes a comma later in a sentence, after clause $head, one that the
+// sentence may need, with clause $prior before the comma before it, the
+// words $before before it, and $rest after it, if anything. Such a comma
+// can close a list, or tell what the clause modifies, as the first one
+// does.
+function middle(head, prior, before, rest) {
+  if (!middleEnds(head[head.length - 1])) return "middle";
+  // The comma closes a list whose items the commas before it part, as in
+  // 手順、選択肢、関係を、リスト、表、図が示す and 選択と、方法を、. Without
+  // it, the particle reads as one of the last item alone.
+  if (isItem(prior, before.at(-head.length - 1))) return "list";
+  // A clause that ends in が, を or で could modify a predicate inside the
+  // rest, such as 作った of やり方を、作った人の意図どおりに述べる, and the
+  // comma tells that it modifies the one at the end. A topic modifies
+  // the predicate at the end with no comma.
+  if (head[head.length - 1].pos_detail_1 === "格助詞" && rest.some((t, i) => i + 1 < rest.length && endsClause(t, rest[i + 1]))) return "inner";
+  return judge(head, before, rest);
+}
+
+// What makes the comma after clause $head one that the sentence may need,
+// with the words $before before it and $rest after it, if anything.
+function judge(head, before, rest) {
   const last = head[head.length - 1];
-  if (last.pos !== "助詞" || !headEnds.has(last.pos_detail_1)) return fact("head");
-  if (isConnective(head)) return fact("connective");
-  if (last.pos_detail_1 === "接続助詞" && contrasts.has(last.surface_form)) return fact("contrast");
-  const topic = head.slice(0, -1).some(isSubject);
-  if (topic && last.surface_form === "で") return fact("predicate");
+  if (last.pos !== "助詞" || !headEnds.has(last.pos_detail_1)) return "head";
+  if (isConnective(head)) return "connective";
+  if (last.pos_detail_1 === "接続助詞" && contrasts.has(last.surface_form)) return "contrast";
+  // A topic or a subject anywhere before the clause makes it a predicate
+  // too, as Bの最新版で of 依存はAと、Bの最新版で、型検査が通る.
+  const topic = before.slice(0, -1).some(isSubject);
+  if (topic && last.surface_form === "で") return "predicate";
   const isTopic = (t) => t.pos === "助詞" && t.pos_detail_1 === "係助詞" && t.surface_form === "は";
-  if (head.some(isTopic) && last.pos_detail_1 !== "接続助詞" && rest.some(isTopic)) return fact("parallel");
-  if (topic && /^[てで]$/.test(last.surface_form) && last.pos_detail_1 === "接続助詞" && rest.some(isSubject)) return fact("clauses");
+  if (head.some(isTopic) && last.pos_detail_1 !== "接続助詞" && rest.some(isTopic)) return "parallel";
+  if (topic && /^[てで]$/.test(last.surface_form) && last.pos_detail_1 === "接続助詞" && rest.some(isSubject)) return "clauses";
   const hasTopic = head.some((t) => t.pos === "助詞" && t.pos_detail_1 === "係助詞" && /^[はも]$/.test(t.surface_form));
-  if (!hasTopic && joinsClauses(rest)) return fact("scope");
-  if (sameWord(head, rest)) return fact("repeat");
-  if (eitherPredicate(rest)) return fact("either");
-  return fact(null);
+  if (!hasTopic && joinsClauses(rest)) return "scope";
+  if (sameWord(head, rest)) return "repeat";
+  if (eitherPredicate(rest)) return "either";
+  return null;
 }
 
 // The index in $text of each comma that the sentence doesn't need, with
 // the thresholds of $options.
 export function unneededCommas(text, tokens, options = {}) {
   const { maxHead, maxSentence } = { ...defaults, ...options };
-  const first = firstComma(text, tokens);
-  return first && !first.keep && first.head <= maxHead && first.sentence <= maxSentence ? [first.comma] : [];
+  return commas(text, tokens)
+    .filter((c) => !c.keep && c.head <= maxHead && c.sentence <= maxSentence)
+    .map((c) => c.comma);
 }
 
 export default (require) => {
@@ -186,7 +244,7 @@ export default (require) => {
             const at = sentence.range[0] - node.range[0] + source.originalIndexFromIndex(index);
             report(
               node,
-              new RuleError("文頭の節のあとの読点です。この節がかかる先は一つしかないので、読点は文の切れ目を示していません。読点を消した文のほうが読みやすいなら、消してください。", {
+              new RuleError("節のあとの読点です。この節がかかる先は一つしかないので、読点は文の切れ目を示していません。読点を消した文のほうが読みやすいなら、消してください。", {
                 padding: locator.range([at, at + 1]),
               }),
             );
