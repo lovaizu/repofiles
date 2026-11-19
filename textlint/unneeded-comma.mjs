@@ -159,50 +159,46 @@ export function commas(text, tokens) {
   words.forEach((t, at) => {
     if (t.surface_form !== "、") return;
     const comma = t.word_position - 1;
-    const from = start === 0 ? 0 : words[start - 1].word_position;
-    const fact = (keep) => ({ comma, head: bare(text.slice(from, comma)).length, sentence: bare(text).length, keep });
+    const mark = words[start - 1];
+    const fact = (keep) => ({ comma, head: bare(text.slice(mark?.word_position ?? 0, comma)).length, sentence: bare(text).length, keep });
     if (depth(comma) !== 0) return facts.push(fact("bracket"));
     const head = words.slice(start, at);
-    const before = words.slice(0, at);
     const rest = words.slice(at + 1);
     const prior = previous;
     start = at + 1;
     previous = head;
     if (head.length === 0 || rest.length === 0) return facts.push(fact("edge"));
-    facts.push(fact(prior.length > 0 ? middle(head, prior, before, rest) : judge(head, before, rest)));
+    facts.push(fact(prior.length > 0 ? middle(head, prior, mark, rest) : judge(head, rest)));
   });
   return facts;
 }
 
 // What makes a comma later in a sentence, after clause $head, one that the
-// sentence may need, with clause $prior before the comma before it, the
-// words $before before it, and $rest after it, if anything. Such a comma
-// can close a list, or tell what the clause modifies, as the first one
-// does.
-function middle(head, prior, before, rest) {
+// sentence may need, with clause $prior before comma $mark, the comma
+// before it, and the words $rest after it, if anything. Such a comma can
+// close a list, or tell what the clause modifies, as the first one does.
+function middle(head, prior, mark, rest) {
   if (!middleEnds(head[head.length - 1])) return "middle";
   // The comma closes a list whose items the commas before it part, as in
   // 手順、選択肢、関係を、リスト、表、図が示す and 選択と、方法を、. Without
   // it, the particle reads as one of the last item alone.
-  if (isItem(prior, before.at(-head.length - 1))) return "list";
+  if (isItem(prior, mark)) return "list";
   // A clause that ends in が, を or で could modify a predicate inside the
   // rest, such as 作った of やり方を、作った人の意図どおりに述べる, and the
   // comma tells that it modifies the one at the end. A topic modifies
   // the predicate at the end with no comma.
   if (head[head.length - 1].pos_detail_1 === "格助詞" && rest.some((t, i) => i + 1 < rest.length && endsClause(t, rest[i + 1]))) return "inner";
-  return judge(head, before, rest);
+  return judge(head, rest);
 }
 
 // What makes the comma after clause $head one that the sentence may need,
-// with the words $before before it and $rest after it, if anything.
-function judge(head, before, rest) {
+// with the words $rest after it, if anything.
+function judge(head, rest) {
   const last = head[head.length - 1];
   if (last.pos !== "助詞" || !headEnds.has(last.pos_detail_1)) return "head";
   if (isConnective(head)) return "connective";
   if (last.pos_detail_1 === "接続助詞" && contrasts.has(last.surface_form)) return "contrast";
-  // A topic or a subject anywhere before the clause makes it a predicate
-  // too, as Bの最新版で of 依存はAと、Bの最新版で、型検査が通る.
-  const topic = before.slice(0, -1).some(isSubject);
+  const topic = head.slice(0, -1).some(isSubject);
   if (topic && last.surface_form === "で") return "predicate";
   const isTopic = (t) => t.pos === "助詞" && t.pos_detail_1 === "係助詞" && t.surface_form === "は";
   if (head.some(isTopic) && last.pos_detail_1 !== "接続助詞" && rest.some(isTopic)) return "parallel";
