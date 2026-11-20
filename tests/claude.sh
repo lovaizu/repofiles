@@ -49,6 +49,12 @@ expect "gh issue create --title 'Add it' --body \"\$(cat <<'EOF'
 EOF
 )\"" "no-mix-dearu-desumasu (error)"
 expect "gh pr edit 1 --title 'Use e.g. this'" "Vale on the title of gh pr edit:"
+# The checks read a title as a heading: it gets the findings of a heading,
+# and needs no period.
+expect "gh issue create --title '結果を画面で見れるようにしたい' --body '結果を画面で確認できます。'" "no-dropping-the-ra (error)"
+expect "gh pr edit 1 --title 'Add Title Case Support Here'" "Google.Headings (warning)"
+expect "gh issue create --title '結果を画面で確認したい' --body '結果を画面で確認できます。'"
+expect "gh pr create --title 'Check a title as a heading' --body 'Use a tool, such as Vale.'"
 expect "gh pr create -t 'Add it' -b 'Use a tool, e.g. Vale.'" "Vale on the body of gh pr create:"
 expect "gh pr create -t 'Use e.g. this' --fill" "the commits of --fill"
 expect "gh pr create --title 'Add it' --body 'B' )" "couldn't read it as Bash"

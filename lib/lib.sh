@@ -100,17 +100,41 @@ vale_reads='\.(md|mdown|markdown|markdn|[Rr]md|mdx|myst|qmd|adoc|asciidoc|asc|rs
 # the .vale.ini of the home directory in place of the settings of the
 # repository. Vale runs in the directory of its settings, where it reads a
 # relative path of them from.
+# Vale reads the title of the front matter as plain text, so no heading rule
+# reads it. For a Markdown file whose title textlint/title-line.mjs finds,
+# Vale reads the title again, as a heading at its line, from stdin with the
+# path of the file, so that the same settings apply. That run's findings
+# take the place of those of the first run on that line.
 check_english() {
-  local file config status
+  local file config status title line
   for file in "$@"; do
     [[ "$file" =~ $vale_reads ]] || continue
     is_text "$file" || continue
     config="$(vale_config "$file")"
     (path="$PWD/$file" && cd "${config%/*}" && XDG_CONFIG_HOME="$work/vale-home" vale --config="$config" --no-exit --output=JSON "$path") >"$work/out" 2>"$work/err"
     status=$?
-    if [ "$status" -ne 0 ]; then
-      fail_run Vale "Vale exited $status" "$file"
-    elif ! add_findings Vale "$(jq --arg file "$file" '{files: [{file: $file, findings: [.[][] | {line: .Line, check: .Check, level: .Severity, message: .Message}]}]}' "$work/out" 2>"$work/err")"; then
+    [ "$status" -eq 0 ] || { fail_run Vale "Vale exited $status" "$file"; continue; }
+    mv "$work/out" "$work/vale.json"
+    echo '{}' >"$work/vale-title.json"
+    title=""
+    line=0
+    if [[ "$file" =~ \.(md|mdown|markdown|markdn)$ ]]; then
+      : >"$work/out"
+      title="$(node "$root/textlint/title-line.mjs" "$textlint_dir/node_modules" "$file" 2>"$work/err")" ||
+        { fail_run Vale "Node couldn't find the title of the front matter" "$file"; continue; }
+    fi
+    if [ -n "$title" ]; then
+      jq -j '[range(.line - 1) | "\n"] + ["# \(.value)\n"] | add' <<<"$title" |
+        (path="$PWD/$file" && cd "${config%/*}" && XDG_CONFIG_HOME="$work/vale-home" vale --config="$config" --no-exit --output=JSON --path="$path") >"$work/out" 2>"$work/err"
+      status=$?
+      [ "$status" -eq 0 ] || { fail_run Vale "Vale exited $status on the title of the front matter" "$file"; continue; }
+      mv "$work/out" "$work/vale-title.json"
+      line="$(jq .line <<<"$title")"
+    fi
+    : >"$work/out"
+    if ! add_findings Vale "$(jq -s --arg file "$file" --argjson line "$line" '{files: [{file: $file,
+        findings: ([.[0][][] | select(.Line != $line)] + [.[1][][]] | sort_by(.Line) | map({line: .Line, check: .Check, level: .Severity, message: .Message}))}]}' \
+        "$work/vale.json" "$work/vale-title.json" 2>"$work/err")"; then
       fail_run Vale "jq couldn't read its report" "$file"
     fi
   done
