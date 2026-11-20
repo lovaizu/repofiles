@@ -128,11 +128,15 @@ want "a file that setup.sh puts" 1 "Vale on config.yml:"
 grep -qF "Vale on lefthook.yml" <<<"$out" && { echo "Failed: the checks should leave out lefthook.yml, but printed:"; echo "$out"; failed=1; }
 
 # Each sentence of the case of ja-no-unneeded-comma gets a finding of its
-# own, and a repository changes the rule in its settings, as any other rule.
+# own, as do the title of the front matter, the heading and the table, and
+# a repository changes the rule in its settings, as any other rule.
 mkdir -p "$tmp/comma"
 cp "$here/cases/japanese/fail-japanese-comma.md" "$tmp/comma/"
 run_in "$tmp/comma" japanese fail-japanese-comma.md
-[ "$(grep -c 'ja-no-unneeded-comma (error)' <<<"$out")" -eq 14 ] || { echo "Failed: each sentence of fail-japanese-comma.md should get ja-no-unneeded-comma (error), but got:"; echo "$out"; failed=1; }
+[ "$(grep -c 'ja-no-unneeded-comma (error)' <<<"$out")" -eq 17 ] || { echo "Failed: each sentence of fail-japanese-comma.md should get ja-no-unneeded-comma (error), but got:"; echo "$out"; failed=1; }
+for line in 2 7 11; do
+  finding textlint fail-japanese-comma.md "Line $line, ja-no-unneeded-comma (error)"
+done
 printf '{"rules": {"ja-no-unneeded-comma": {"severity": "info"}}}\n' >"$tmp/comma/.textlintrc.json"
 run_in "$tmp/comma" japanese fail-japanese-comma.md
 want "ja-no-unneeded-comma at the level info" 0 "ja-no-unneeded-comma (info)"
