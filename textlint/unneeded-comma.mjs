@@ -13,6 +13,19 @@
 const opens = /[「『（(［\[【〈《]/g;
 const closes = /[」』）)］\]】〉》]/g;
 
+// sentence-splitter stops at the first text that no child of the paragraph
+// holds, and drops the rest of the paragraph. In a list item, the
+// indentation after a hard break is such text, so each hard break reaches
+// to the next child, and the splitter reads on.
+const reachNext = (node, Break) => ({
+  ...node,
+  children: node.children.map((child, i, all) =>
+    child.type === Break && all[i + 1]
+      ? { ...child, range: [child.range[0], all[i + 1].range[0]], loc: { ...child.loc, end: all[i + 1].loc.start } }
+      : child,
+  ),
+});
+
 export default (require) => {
   const { tokenize } = require("kuromojin");
   const { splitAST, SentenceSplitterSyntax } = require("sentence-splitter");
@@ -21,7 +34,7 @@ export default (require) => {
     const { Syntax, RuleError, report, locator } = context;
     return {
       async [Syntax.Paragraph](node) {
-        const sentences = splitAST(node).children.filter((child) => child.type === SentenceSplitterSyntax.Sentence);
+        const sentences = splitAST(reachNext(node, Syntax.Break)).children.filter((child) => child.type === SentenceSplitterSyntax.Sentence);
         for (const sentence of sentences) {
           // Code reads as a word of the sentence, by the mask of each of its
           // characters.
