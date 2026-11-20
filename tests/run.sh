@@ -166,6 +166,16 @@ for title in "API の使い方" "'API の使い方'" '"API の使い方"'; do
   run_in "$tmp/title" japanese title.md
   finding textlint title.md "Line 3, ja-space-between-half-and-full-width (error)"
 done
+# Vale reads the title as a heading too, at its line, quoted or not. The
+# title gets each finding once, and the other values of the front matter
+# keep theirs.
+for title in "Use e.g. Title Case" "'Use e.g. Title Case'" '"Use e.g. Title Case"'; do
+  printf -- '---\nlayout: post\ntitle: %s\ndescription: Use e.g. this.\n---\n\nUse a tool.\n' "$title" >"$tmp/title/title.md"
+  run_in "$tmp/title" english title.md
+  finding Vale title.md "Line 3, Google.Headings (warning)"
+  finding Vale title.md "Line 4, Google.Latin (error)"
+  [ "$(grep -c 'Line 3, Google.Latin (error)' <<<"$out")" -eq 1 ] || { echo "Failed: the title should get Google.Latin once, but the check printed:"; echo "$out"; failed=1; }
+done
 
 # The links check reads only the links within the repository, even where
 # the lychee.toml of the repository asks for the others.

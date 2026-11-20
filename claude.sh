@@ -37,12 +37,16 @@ reason=""
 while IFS= read -r item; do
   what="$(jq -r .what <<<"$item")"
   file="$(jq -r '.file // empty' <<<"$item")"
-  # GitHub reads a title as plain text, and a body as Markdown.
-  case "$what" in "the title"*) path="${work##*/}/${#files[@]}.txt" ;; *) path="${work##*/}/${#files[@]}.md" ;; esac
+  # GitHub shows a title as the heading of its page, and reads a body as
+  # Markdown. So the checks read a title as a heading, which needs no
+  # period, as each heading rule reads it.
+  path="${work##*/}/${#files[@]}.md"
+  heading=""
+  case "$what" in "the title"*) heading="# " ;; esac
   if [ -n "$file" ]; then
     [ "${file#/}" != "$file" ] || file="$cwd/$file"
     cp "$file" "$path" 2>/dev/null || { reason+="The hook can't read $what, as $file isn't there before the command runs. Write the text in the command, or in a file that exists before it runs."$'\n\n'; continue; }
-  elif ! jq -je '.text // error' <<<"$item" >"$path" 2>/dev/null; then
+  elif ! jq -je --arg heading "$heading" '$heading + (.text // error)' <<<"$item" >"$path" 2>/dev/null; then
     reason+="The hook can't read $what, as the command makes it when it runs, such as from a variable, the commits of --fill, or a template. Write the text in the command, or in a file that exists before it runs."$'\n\n'
     continue
   fi

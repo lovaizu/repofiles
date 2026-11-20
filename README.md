@@ -39,7 +39,7 @@ A `.vale.ini` or `.textlintrc` in the repository changes the rules of the check 
 
 A finding at the level warning or error stops the text, and a lower one only shows. Each check reads the Markdown files, the files that people read and the prompts, unless the repository gives it other files with `glob` in its `lefthook-repo.yml`. Of the files it gets, each check reads only those whose prose its tool reads apart from the code. Vale reads markup, such as Markdown, and the comments of code, of YAML, and of TOML. textlint reads Markdown and plain text. lychee reads Markdown, HTML, and plain text. The checks leave out any other file, such as JSON, a shell script, or a file with no extension, as the tool would read its code as prose.
 
-- `english` checks English by [Vale](https://vale.sh) with the [Google developer documentation style](https://developers.google.com/style).
+- `english` checks English by [Vale](https://vale.sh) with the [Google developer documentation style](https://developers.google.com/style). Vale reads the title of the front matter as a heading too, by [`textlint/title-line.mjs`](textlint/title-line.mjs).
 - `japanese` checks Japanese by [textlint](https://textlint.org), with these rules:
   - [`textlint-rule-preset-ja-technical-writing`](https://github.com/textlint-ja/textlint-rule-preset-ja-technical-writing)
   - [`@textlint-ja/textlint-rule-preset-ai-writing`](https://github.com/textlint-ja/textlint-rule-preset-ai-writing)
@@ -54,7 +54,7 @@ A finding at the level warning or error stops the text, and a lower one only sho
 
 Each day, the workflow Daily checks all the links of the files of `links`, as the `lychee.toml` of the repository says, with the token of the workflow, so that GitHub answers more of the requests. On a finding, the run fails, and its log lists each link with its file and line. A failed run is the report, as GitHub emails it to the user who created the workflow, last changed its `cron`, or turned it back on, when that user's [notification settings](https://docs.github.com/en/actions/concepts/workflows-and-actions/notifications-for-workflow-runs) send the failures of GitHub Actions.
 
-The Claude Code hook gives the title, body and comment of each `gh issue` and `gh pr` command to the checks of the languages before the command runs, and stops the command on a finding that stops the text.
+The Claude Code hook gives the title, body and comment of each `gh issue` and `gh pr` command to the checks of the languages before the command runs, with the title as a heading, as GitHub shows it, and stops the command on a finding that stops the text.
 
 ## Release a version
 
