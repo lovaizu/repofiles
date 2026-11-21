@@ -14,7 +14,6 @@ jobs:
       # The action itself, as another repository runs it: the checks of
       # lefthook.yml on every file.
       - uses: ./
-      - run: grep SigIgn /proc/$$/status /proc/self/status; bash -c 'grep SigIgn /proc/$$/status'
       - run: tests/run.sh
       - run: tests/setup.sh
       - run: tests/consumer.sh

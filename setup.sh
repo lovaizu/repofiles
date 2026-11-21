@@ -33,8 +33,12 @@ render() {
 
 mapfile -t names < <(git -C "$here" ls-tree -r --name-only "$commit" -- files/ | sed 's|^files/||')
 blocked=()
+# The first line comes from the whole text, not from render piped to head:
+# head exits after one line, and printf can then write to a closed pipe.
 for name in "${names[@]}"; do
-  [ ! -e "$target/$name" ] || [ "$(head -n 1 "$target/$name")" = "$(render "$name" | head -n 1)" ] || blocked+=("$name")
+  [ -e "$target/$name" ] || continue
+  text="$(render "$name")"
+  [ "$(head -n 1 "$target/$name")" = "${text%%$'\n'*}" ] || blocked+=("$name")
 done
 if [ "${#blocked[@]}" -gt 0 ]; then
   echo "setup.sh: these files are the repository's own, so setup.sh put nothing: ${blocked[*]}. Fix: move their settings out, the lefthook settings to lefthook-repo.yml, delete the files, and run setup.sh again." >&2

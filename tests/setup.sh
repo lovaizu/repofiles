@@ -40,10 +40,19 @@ grep -q "ref: v9.9.9" "$dir/repo/lefthook.yml" &&
   ! grep -rq '{{' "$dir/repo/lefthook.yml" "$dir/repo/.github" "$dir/repo/.claude" ||
   { echo "Failed: setup.sh should put each file with the version filled in."; failed=1; }
 
+# Fails the test unless a second run of setup.sh prints nothing and changes
+# nothing. The run ignores SIGPIPE, as a step of GitHub Actions does. There,
+# a write to a closed pipe prints an error instead of ending the writer.
+again() {
+  local out
+  git -C "$dir/repo" add -A
+  out="$(trap '' PIPE && exec "$setup" "$dir/repo" 2>&1)"
+  [ -z "$out" ] && git -C "$dir/repo" diff --quiet ||
+    { echo "Failed: a second run of setup.sh should change nothing, but it printed:"; echo "$out"; echo "and git diff shows:"; git -C "$dir/repo" diff; failed=1; }
+}
+
 # A second run changes nothing.
-git -C "$dir/repo" add -A
-[ -z "$("$setup" "$dir/repo" 2>&1)" ] && git -C "$dir/repo" diff --quiet ||
-  { echo "Failed: a second run of setup.sh should change nothing."; failed=1; }
+again
 
 # A newer tag updates the version, and the files of the repository stay.
 printf 'pre-commit: {}\n' >"$dir/repo/lefthook-repo.yml"
@@ -52,6 +61,15 @@ git -C "$dir/repofiles" tag v9.9.10
 expect 0 "put lefthook.yml of v9.9.10" "$setup" "$dir/repo"
 grep -q "ref: v9.9.10" "$dir/repo/lefthook.yml" && [ "$(cat "$dir/repo/lefthook-repo.yml")" = "pre-commit: {}" ] ||
   { echo "Failed: setup.sh should update the version and leave lefthook-repo.yml."; failed=1; }
+
+# A second run changes nothing with a file larger than a pipe holds, which
+# makes the write to a closed pipe certain.
+seq 100000 >"$dir/repofiles/files/large.txt"
+git -C "$dir/repofiles" add files/large.txt
+git -C "$dir/repofiles" commit -q -m "A large file"
+git -C "$dir/repofiles" tag v9.9.11
+expect 0 "put large.txt of v9.9.11" "$setup" "$dir/repo"
+again
 
 # setup.sh never overwrites a file that it didn't put, and names it.
 git init -q "$dir/own"
