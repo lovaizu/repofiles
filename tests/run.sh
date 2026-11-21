@@ -193,6 +193,12 @@ out="$(cd "$tmp/links" && REPOFILES_LINKS_DAILY=1 "$here/../prose.sh" links dail
 status=$?
 want "all the links for daily.sh" 1 "Line 1, dead-link (error): https://github.com/lovaizu/repofiles/blob/main/no-such-file.md: " "Line 2, dead-link (error): moved.md: File not found"
 
+# Each script of the root of the repository runs by its path, so Git holds
+# it as executable.
+while read -r mode _ _ path; do
+  [ "$mode" = 100755 ] || { echo "Failed: Git should hold $path as executable, mode 100755, but holds it as $mode."; failed=1; }
+done < <(git -C "$here/.." ls-files -s -- ':(glob)*.sh')
+
 # Each package that the checks load is in textlint/package.json, which
 # pins it.
 for module in $(grep -ohE 'require\("[^"]+"\)' "$here"/../textlint/*.mjs | sed -E 's/require\("((@[^/"]+\/)?[^/"]+)[^"]*"\)/\1/' | sort -u); do
