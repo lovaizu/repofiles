@@ -9,12 +9,17 @@ trap 'rm -rf "$dir"' EXIT
 failed=0
 # The commits of the test need an identity, which a runner of CI lacks.
 export GIT_AUTHOR_NAME=test GIT_AUTHOR_EMAIL=test@example.com GIT_COMMITTER_NAME=test GIT_COMMITTER_EMAIL=test@example.com
+# Runs the hook on the Bash command $1, as Claude Code does, and prints what
+# it printed.
+run() {
+  jq -n --arg cwd "$PWD" --arg command "$1" '{cwd: $cwd, tool_name: "Bash", tool_input: {command: $command}}' | sh -c "$hook" 2>&1
+}
 # Runs the hook on the Bash command $1, as Claude Code does, and fails the
 # test unless it denies the command with text $2, or, with no $2, prints
 # nothing.
 expect() {
   local out
-  out="$(jq -n --arg cwd "$PWD" --arg command "$1" '{cwd: $cwd, tool_name: "Bash", tool_input: {command: $command}}' | sh -c "$hook" 2>&1)"
+  out="$(run "$1")"
   if [ -z "${2:-}" ]; then
     [ -z "$out" ] || { echo "Failed: the hook should pass $1, but it printed:"; echo "$out"; failed=1; }
   elif [ "$(jq -r .hookSpecificOutput.permissionDecision <<<"$out" 2>/dev/null)" != deny ] || ! grep -qF -- "$2" <<<"$out"; then
@@ -34,14 +39,40 @@ cd "$dir/repo" || exit 1
 export CLAUDE_PROJECT_DIR="$dir/repo"
 "$dir/repofiles/setup.sh" . >/dev/null
 hook="$(jq -r '.hooks.PreToolUse[0].hooks[0].command' .claude/settings.json)"
-# Without lefthook install, and with no way to fetch the version, lefthook
-# can't run the job, and the hook stops the command with exit 2, which
-# Claude Code reads as a denial.
-out="$(jq -n --arg cwd "$PWD" '{cwd: $cwd, tool_name: "Bash", tool_input: {command: "gh pr create --title A --body B"}}' | env -u GIT_CONFIG_COUNT sh -c "$hook" 2>&1)"
-status=$?
-[ "$status" -eq 2 ] && [ "$out" = "The text of this command wasn't checked, as lefthook couldn't run the checks. Fix: install lefthook, and run lefthook install in this repository." ] ||
-  { echo "Failed: the hook should exit 2 with one line when lefthook can't run the job, but it exited $status with:"; echo "$out"; failed=1; }
+# Each form of a command that posts a text, which the checks read as they
+# read the plain one.
+posts=(
+  "gh pr create --title 'Add it' --body 'Use a tool, e.g. Vale.'"
+  "git push && gh pr create --title 'Add it' --body 'Use a tool, e.g. Vale.'"
+  "echo 1 | GH_REPO=a/b gh issue comment 1 --body 'Use a tool, e.g. Vale.'"
+  "url=\$(gh pr create -R a/b --title 'Add it' --body 'Use a tool, e.g. Vale.')"
+  "gh -R a/b pr create --title 'Add it' --body 'Use a tool, e.g. Vale.'"
+  "'g'h \"pr\" create --title 'Add it' --body 'Use a tool, e.g. Vale.'"
+  "g\$'h' issue create --title 'Add it' --body 'Use a tool, e.g. Vale.'"
+)
+# With no way to fetch the version, lefthook can't run the job. The hook
+# still passes a command that holds no gh issue or gh pr, as it posts no
+# text, even one that isn't Bash.
+for command in 'R=/path/to/repofiles; $R/ci.sh 2>&1 | tail -60' 'S=/path/to/scratchpad; mkdir -p $S; git diff > $S/d1' 'gh run list' "echo 'a' )"; do
+  out="$(GIT_CONFIG_COUNT=0 run "$command")"
+  status=$?
+  [ "$status" -eq 0 ] && [ -z "$out" ] || { echo "Failed: the hook should pass $command at once, but it exited $status with:"; echo "$out"; failed=1; }
+done
+# It stops each command that posts a text, and one that may and isn't Bash,
+# with exit 2, which Claude Code reads as a denial, and with the error
+# output of lefthook.
+for command in "${posts[@]}" "gh pr create --title 'Add it' --body 'B' )" "g\\
+h pr create --title 'Add it' --body 'B'"; do
+  out="$(GIT_CONFIG_COUNT=0 run "$command")"
+  status=$?
+  [ "$status" -eq 2 ] && grep -qF "lefthook run claude-code failed" <<<"$out" && grep -qF "Error: hook claude-code doesn't exist in the config" <<<"$out" ||
+    { echo "Failed: the hook should stop $command with exit 2 and the error output of lefthook, but it exited $status with:"; echo "$out"; failed=1; }
+done
 lefthook install >/dev/null
+
+for command in "${posts[@]}"; do
+  expect "$command" "Google.Latin (error)"
+done
 
 expect "gh pr create --title 'Add it' --body 'Use a tool, e.g. Vale.'" "Vale on the body of gh pr create:"
 expect "gh issue create --title 'Add it' --body \"\$(cat <<'EOF'

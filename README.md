@@ -54,7 +54,7 @@ A finding at the level warning or error stops the text, and a lower one only sho
 
 Each day, the workflow Daily checks all the links of the files of `links`, as the `lychee.toml` of the repository says, with the token of the workflow, so that GitHub answers more of the requests. On a finding, the run fails, and its log lists each link with its file and line. A failed run is the report, as GitHub emails it to the user who created the workflow, last changed its `cron`, or turned it back on, when that user's [notification settings](https://docs.github.com/en/actions/concepts/workflows-and-actions/notifications-for-workflow-runs) send the failures of GitHub Actions.
 
-The Claude Code hook gives the title, body and comment of each `gh issue` and `gh pr` command to the checks of the languages before the command runs, with the title as a heading, as GitHub shows it, and stops the command on a finding that stops the text.
+The Claude Code hook gives the title, body and comment of each `gh issue` and `gh pr` command to the checks of the languages before the command runs, with the title as a heading, as GitHub shows it, and stops the command on a finding that stops the text. It passes at once a command that holds no `gh issue` or `gh pr`, as such a command posts no text. When the checks can't run, it stops the command with their error output.
 
 ## Release a version
 

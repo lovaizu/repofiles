@@ -17,8 +17,15 @@ def part:
     [.Stmts[0].Redirs[]? | select(.Op == "<<") | .Hdoc | [.Parts[]? | part] | joined] | .[0] // null | if . == null then null else sub("\n+$"; "") end
   else null end;
 def word: [.Parts[]? | part] | joined;
+# The arguments after gh, without --repo or -R and its value before the
+# subcommand, as gh reads `gh -R owner/repo pr create` too.
+def subcommand:
+  if .[0] == "--repo" or .[0] == "-R" then .[2:] | subcommand
+  elif (.[0] // "") | test("^(--repo=|-R.)") then .[1:] | subcommand
+  else . end;
 
-[.. | objects | select(.Type? == "CallExpr") | [.Args[]? | word] as $args |
+[.. | objects | select(.Type? == "CallExpr") | [.Args[]? | word] |
+  (if .[0] == "gh" then [.[0]] + (.[1:] | subcommand) else . end) as $args |
   select($args[0] == "gh" and ($args[1] == "issue" or $args[1] == "pr")) |
   "gh \($args[1]) \($args[2])" as $cmd |
   range(3; $args | length) as $i | ($args[$i] // "") as $a |
