@@ -11,7 +11,7 @@ failed=0
 export GIT_AUTHOR_NAME=test GIT_AUTHOR_EMAIL=test@example.com GIT_COMMITTER_NAME=test GIT_COMMITTER_EMAIL=test@example.com
 # The command that expect runs: ci.sh, as the action runs it, unless a case
 # names another.
-run=(bash "$here/ci.sh")
+run=("$here/ci.sh")
 # Fails the test when the command doesn't exit $1 with each text that the
 # rest names, or prints a line that matches the extended regular expression
 # $2, if any, which the case leaves out.
@@ -74,7 +74,7 @@ mkdir -p vendor
 printf 'pre-commit:\n  jobs:\n    - name: japanese\n      skip: true\n    - name: links\n      exclude:\n        - "vendor/**"\n' >lefthook-repo.yml
 printf '# Links\n\n[A site that is down](http://127.0.0.1:9/away), and [a file that moved](moved.md).\n' | tee away.md >vendor/away.md
 git add -A
-run=(bash "$here/daily.sh" links)
+run=("$here/daily.sh" links)
 expect 1 "vendor|stop the commit" "These links lead nowhere:" "lychee on away.md:" "Line 3, dead-link (error): http://127.0.0.1:9/away: " "Line 3, dead-link (error): moved.md: File not found"
 # With no finding, it passes.
 printf '# Links\n' >away.md
@@ -84,7 +84,7 @@ expect 0 ""
 printf 'pre-commit:\n  jobs:\n    - name: links\n      skip: true\n' >lefthook-repo.yml
 expect 0 "" "daily.sh checks nothing"
 # With each check off, ci.sh fails, as it would check nothing.
-run=(bash "$here/ci.sh")
+run=("$here/ci.sh")
 printf 'pre-commit:\n  jobs:\n    - name: english\n      skip: true\n    - name: japanese\n      skip: true\n    - name: links\n      skip: true\n' >lefthook-repo.yml
 expect 1 "" "has no job of lovaizu/repofiles that is on"
 [ "$failed" -eq 0 ] && echo "The consumer cases passed."
