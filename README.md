@@ -65,4 +65,6 @@ git tag v0.2.1 origin/main
 git push origin v0.2.1
 ```
 
+This repository checks its own texts with the files that `setup.sh` puts at a released tag, as each other repository does. So [update it](#set-up-or-update-a-repository) to the new tag too. The workflow Tests tests the working tree of the checks apart from that.
+
 After a change of a tool in `mise.toml`, run `mise lock --platform linux-x64,linux-arm64,macos-arm64,macos-x64`, so that each platform has its sha256 in `mise.lock`.

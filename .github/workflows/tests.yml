@@ -1,3 +1,6 @@
+# The tests of the working tree of the checks. They don't check the texts
+# of this repository: lint.yml and daily.yml do, with the files that
+# setup.sh puts at a released tag, as in each other repository.
 name: Tests
 
 on: push
@@ -10,11 +13,34 @@ jobs:
   tests:
     runs-on: ubuntu-24.04
     steps:
+      # This repository goes to repofiles/, so that the root of the
+      # workspace, where the action runs, can be a repository that
+      # setup.sh sets up, as in tests/consumer.sh.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      # The action itself, as another repository runs it: the checks of
-      # lefthook.yml on every file.
-      - uses: ./
-      - run: tests/run.sh
-      - run: tests/setup.sh
-      - run: tests/consumer.sh
-      - run: tests/claude.sh
+        with:
+          path: repofiles
+      # lefthook fetches the checks by a tag from the URL that setup.sh
+      # writes, so the commit gets a tag of its own, and Git fetches that
+      # URL from this clone.
+      - run: |
+          git -C repofiles tag v9.9.9
+          echo "GIT_CONFIG_COUNT=1" >>"$GITHUB_ENV"
+          echo "GIT_CONFIG_KEY_0=url.$GITHUB_WORKSPACE/repofiles.insteadOf" >>"$GITHUB_ENV"
+          echo "GIT_CONFIG_VALUE_0=https://github.com/lovaizu/repofiles" >>"$GITHUB_ENV"
+          git init -q .
+          echo /repofiles/ >>.git/info/exclude
+          repofiles/setup.sh .
+          printf '# Tools\n\nRead [the license](LICENSE).\n' >README.md
+          cp repofiles/LICENSE .
+          git add -A
+      # The action of the working tree, as another repository runs it: the
+      # checks of lefthook.yml on every file, and the daily check. It also
+      # installs the tools of the tests.
+      - uses: ./repofiles
+      - uses: ./repofiles
+        with:
+          daily: links
+      - run: repofiles/tests/run.sh
+      - run: repofiles/tests/setup.sh
+      - run: repofiles/tests/consumer.sh
+      - run: repofiles/tests/claude.sh

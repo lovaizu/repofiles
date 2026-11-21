@@ -1,0 +1,16 @@
+# The lefthook settings of this repository, which setup.sh never writes.
+# This repository checks its texts as each other repository does, as
+# "Release a version" of the README says.
+pre-commit:
+  jobs:
+    # The cases of tests/cases hold findings on purpose.
+    - name: english
+      exclude:
+        - "tests/cases/**"
+    - name: links
+      exclude:
+        - "tests/cases/**"
+    # The prose of this repository is English. Its few Japanese words are
+    # examples of what the Japanese check reads.
+    - name: japanese
+      skip: true
