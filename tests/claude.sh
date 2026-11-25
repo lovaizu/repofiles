@@ -103,6 +103,14 @@ expect "gh issue comment 1 --body-file missing.md" "missing.md isn't there befor
 expect "gh pr create --title 'Add it' --body 'Read [the steps](setup.md).'"
 [ -z "$(find . -maxdepth 1 -name '.claude-code.*')" ] || { echo "Failed: the hook should delete the copies of the texts."; failed=1; }
 
+# The hook runs prose.sh with the bash on PATH, as the pre-commit jobs do
+# with runner: bash. /bin/bash of macOS is bash 3.2, which has no mapfile.
+mkdir "$dir/bin"
+printf '#!/bin/sh\necho "$*" >>"%s"\nexec "%s" "$@"\n' "$dir/bash.log" "$(command -v bash)" >"$dir/bin/bash"
+chmod +x "$dir/bin/bash"
+PATH="$dir/bin:$PATH" expect "gh pr create --title 'Add it' --body 'Use a tool, e.g. Vale.'" "Google.Latin (error)"
+grep -q "prose.sh english " "$dir/bash.log" || { echo "Failed: the hook should run prose.sh with the bash on PATH, but that bash ran only:"; cat "$dir/bash.log"; failed=1; }
+
 # A repository names the jobs that check the texts, and the hook runs only
 # those: textlint would stop the length of the English sentence, and the
 # Japanese one.
