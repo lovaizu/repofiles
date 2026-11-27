@@ -54,9 +54,12 @@ while IFS= read -r item; do
   whats+=("$what")
 done < <(jq -c '.[]' <<<"$texts")
 
+# prose.sh runs with the bash on PATH, as the pre-commit jobs run it with
+# runner: bash. Its shebang would pick /bin/bash, which on macOS is bash
+# 3.2, with no mapfile.
 for job in "${jobs[@]}"; do
   [ "${#files[@]}" -gt 0 ] || break
-  out="$("$here/prose.sh" "$job" "${files[@]}" 2>&1)" && continue
+  out="$(bash "$here/prose.sh" "$job" "${files[@]}" 2>&1)" && continue
   for i in "${!files[@]}"; do out="${out//"${files[$i]}"/"${whats[$i]}"}"; done
   reason+="$out"$'\n\n'
 done

@@ -31,7 +31,12 @@ render() {
   printf '%s\n' "${text//\{\{commit\}\}/$commit}"
 }
 
-mapfile -t names < <(git -C "$here" ls-tree -r --name-only "$commit" -- files/ | sed 's|^files/||')
+# A loop, not mapfile: README runs setup.sh by its path, so the shebang
+# picks /bin/bash, which on macOS is bash 3.2.
+names=()
+while IFS= read -r name; do
+  names+=("$name")
+done < <(git -C "$here" ls-tree -r --name-only "$commit" -- files/ | sed 's|^files/||')
 blocked=()
 # The first line comes from the whole text, not from render piped to head:
 # head exits after one line, and printf can then write to a closed pipe.
